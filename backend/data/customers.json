@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "name": "Amit Sharma",
+    "age": 32,
+    "city": "Delhi",
+    "phone": "9876543210",
+    "salary": 80000,
+    "credit_score": 750,
+    "preapproved_limit": 500000,
+    "existing_loans": 1
+  },
+  {
+    "id": 2,
+    "name": "Priya Mehta",
+    "age": 28,
+    "city": "Mumbai",
+    "phone": "9988776655",
+    "salary": 60000,
+    "credit_score": 690,
+    "preapproved_limit": 300000,
+    "existing_loans": 0
+  }
+]
