@@ -1,24 +1,24 @@
 from fastapi import FastAPI, Request
-from agents.sales_agent import SalesAgent
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from agents.master_agent import MasterAgent
 
 app = FastAPI()
 
-# ✅ Allow your frontend to call backend
+# ✅ Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["http://localhost:5173"] for Vite
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-sales_agent = SalesAgent()
+# ✅ Create one master agent for the entire app
+master_agent = MasterAgent()
 
-@app.post("/sales")
-async def handle_sales(request: Request):
+@app.post("/chat")
+async def handle_chat(request: Request):
     data = await request.json()
     msg = data.get("message", "")
-    response = sales_agent.handle_sales(msg)
+    response = master_agent.handle_message(msg)
     return {"response": response}

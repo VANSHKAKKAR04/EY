@@ -13,7 +13,7 @@ def query_mistral(prompt: str):
         "Content-Type": "application/json",
     }
     payload = {
-        "model": "mistral-medium",   # or mistral-small / large / open-mixtral
+        "model": "mistral-tiny",   # or mistral-small / large / open-mixtral
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 300,
         "temperature": 0.7,
