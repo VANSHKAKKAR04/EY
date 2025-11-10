@@ -5,26 +5,21 @@ class UnderwritingAgent:
     def evaluate_loan(self, name: str, interest_rate: float = 12.0, tenure_years: int = 3):
         """
         Evaluate a customer's loan eligibility using mock credit and CRM data.
-
-        Rules:
-        1️⃣ Reject if credit score < 700.
-        2️⃣ Approve instantly if requested_loan ≤ preapproved_limit.
-        3️⃣ If ≤ 2× preapproved_limit → request salary slip, approve only if EMI ≤ 50% of salary.
-        4️⃣ Reject if > 2× preapproved_limit.
+        Returns: (response_text, next_stage)
         """
         cust = get_customer_kyc(name)
         if not cust:
-            return f"❌ Customer '{name}' not found in CRM."
+            return (f"❌ Customer '{name}' not found in CRM.", None)
 
         # Fetch data
         score = get_credit_score(name)
-        requested = cust.get("requested_loan", 0)
+        requested = cust.get("requested_loan", cust.get("preapproved_limit", 0))  # fallback
         pre_limit = cust.get("preapproved_limit", 0)
         salary = cust.get("salary", 0)
 
         # 1️⃣ Credit score gate
         if score < 700:
-            return f"❌ Credit score {score} is below 700. Loan cannot be approved."
+            return (f"❌ Credit score {score} is below 700. Loan cannot be approved.", "complete")
 
         # 2️⃣ Instant approval
         if requested <= pre_limit:
@@ -32,12 +27,12 @@ class UnderwritingAgent:
                 f"✅ Approved instantly!\n"
                 f"Credit Score: {score}\n"
                 f"Requested: ₹{requested}\n"
-                f"Within pre-approved limit of ₹{pre_limit}."
+                f"Within pre-approved limit of ₹{pre_limit}.",
+                "sanction"
             )
 
         # 3️⃣ Conditional approval (needs salary check)
         elif requested <= 2 * pre_limit:
-            # Estimate EMI using reducing balance formula
             emi = self.calculate_emi(requested, interest_rate, tenure_years)
             max_emi = 0.5 * salary
 
@@ -46,19 +41,21 @@ class UnderwritingAgent:
                     f"✅ Conditional Approval\n"
                     f"Credit Score: {score}\n"
                     f"EMI: ₹{emi:.2f} (≤ 50% of salary ₹{salary})\n"
-                    f"Please upload your latest salary slip for verification."
+                    f"Please upload your latest salary slip for verification.",
+                    "sanction"
                 )
             else:
                 return (
                     f"⚠️ EMI ₹{emi:.2f} exceeds 50% of salary ₹{salary}.\n"
-                    f"Loan cannot be approved without further review."
+                    f"Loan cannot be approved without further review.",
+                    "complete"
                 )
 
         # 4️⃣ Rejection
-        else:
-            return (
-                f"❌ Requested ₹{requested} exceeds 2× your limit (₹{2 * pre_limit})."
-            )
+        return (
+            f"❌ Requested ₹{requested} exceeds 2× your limit (₹{2 * pre_limit}).",
+            "complete"
+        )
 
     # -------------------------------------------
     @staticmethod

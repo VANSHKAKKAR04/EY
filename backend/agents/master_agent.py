@@ -98,13 +98,22 @@ class MasterAgent:
         # === STAGE 5: Sanction Letter Generation (SanctionAgent) ===
         elif stage == "sanction":
             name = self.state["customer_name"]
-            response, next_stage = self.sanction.generate_letter(name)
+            loan_data = {
+                "name": name,
+                "approved_amount": self.state.get("loan_amount", 0),
+                "interest_rate": 10.5,
+                "tenure": self.state.get("tenure", 3),
+                "age": 30,  # Added age as you mentioned
+            }
 
-            if next_stage:
-                self.state["stage"] = next_stage
-                print(f"[DEBUG] Transitioning to next stage: {next_stage}")
+            response = self.sanction.generate_letter(loan_data)
+
+            # Move to complete stage after sanction
+            self.state["stage"] = "complete"
+            print(f"[DEBUG] Transitioning to next stage: complete")
 
             return response
+
 
         # === STAGE 6: Completed ===
         elif stage == "complete":
