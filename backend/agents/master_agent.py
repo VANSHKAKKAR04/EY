@@ -6,19 +6,17 @@ from agents.sanction_agent import SanctionAgent
 
 class MasterAgent:
     """
-    MasterAgent — the orchestrator that manages the full loan journey:
+    MasterAgent — orchestrates the entire loan lifecycle:
     greeting → sales → kyc → underwriting → sanction → complete
-    Each worker agent handles its own sub-task logic autonomously.
+    Each worker agent autonomously handles its sub-stage logic.
     """
 
     def __init__(self):
-        # Initialize worker agents
         self.sales = SalesAgent()
         self.verify = VerificationAgent()
         self.underwrite = UnderwritingAgent()
         self.sanction = SanctionAgent()
 
-        # Global master state
         self.state = {
             "stage": "greeting",
             "customer_name": None,
@@ -37,40 +35,34 @@ class MasterAgent:
             self.state["stage"] = "sales"
             return "👋 Hello! I’m your Tata Capital AI Assistant. Would you like to apply for a personal loan today?"
 
-        # === STAGE 2: Sales Discussion (handled by SalesAgent) ===
+        # === STAGE 2: Sales Discussion ===
         elif stage == "sales":
             response, next_stage = self.sales.handle_sales(msg)
 
-            # Update master state with customer context
+            # Capture context from SalesAgent
             self.state["customer_name"] = self.sales.context.get("name")
             self.state["loan_amount"] = self.sales.context.get("amount")
             self.state["tenure"] = self.sales.context.get("tenure")
 
-            # Transition control if SalesAgent completes its flow
             if next_stage:
                 self.state["stage"] = next_stage
                 print(f"[DEBUG] Transitioning to next stage: {next_stage}")
 
             return response
 
-        # === STAGE 3: KYC Verification (VerificationAgent) ===
+        # === STAGE 3: KYC Verification ===
         elif stage == "kyc":
             print(f"[DEBUG] Handling KYC stage for message: '{msg}'")
 
-            # Allow user to ask sales-related or general questions mid-way
-            if "limit" in msg_lower or "loan" in msg_lower:
-                return (
-                    "Your KYC verification is in progress. "
-                    "Once verified, I can confirm your pre-approved limit."
-                )
-
             name = self.state.get("customer_name")
+            requested_amount = self.state.get("loan_amount")
+
             if not name:
                 print("[ERROR] Missing customer name during KYC.")
                 return "Could you please confirm your full name again for KYC verification?"
 
             try:
-                response = self.verify.perform_kyc(name)
+                response = self.verify.perform_kyc(name, requested_amount)
             except Exception as e:
                 print(f"[ERROR] KYC verification failed: {e}")
                 return "I ran into an issue verifying your KYC. Please try again."
@@ -81,13 +73,22 @@ class MasterAgent:
             else:
                 return response + "\nPlease re-enter your details."
 
-
-        # === STAGE 4: Underwriting (UnderwritingAgent) ===
+        # === STAGE 4: Underwriting ===
         elif stage == "underwriting":
-            name = self.state["customer_name"]
-            amount = self.state["loan_amount"]
-            tenure = self.state["tenure"]
-            response, next_stage = self.underwrite.evaluate_loan(name, amount, tenure)
+            print(f"[DEBUG] Handling underwriting stage for message='{msg}'")
+
+            name = self.state.get("customer_name")
+            amount = self.state.get("loan_amount")
+            tenure = self.state.get("tenure", 3)
+
+            if not name or not amount:
+                print("[ERROR] Missing customer data during underwriting.")
+                return "❌ Missing details — please re-enter your name and loan amount."
+
+            # ✅ Pass amount explicitly to underwriting agent
+            response, next_stage = self.underwrite.evaluate_loan(
+                name, requested_amount=amount, interest_rate=12.0, tenure_years=tenure
+            )
 
             if next_stage:
                 self.state["stage"] = next_stage
@@ -95,25 +96,41 @@ class MasterAgent:
 
             return response
 
-        # === STAGE 5: Sanction Letter Generation (SanctionAgent) ===
+        # === STAGE 5: Sanction Letter ===
         elif stage == "sanction":
             name = self.state["customer_name"]
+            amount = self.state.get("loan_amount")
+            tenure = self.state.get("tenure", 3)
+
+            if not name:
+                print("[ERROR] Missing name during sanction stage.")
+                return "❌ Customer name missing — unable to generate sanction letter."
+
+            # Ensure fallback amount if missing
+            if not amount or amount <= 0:
+                from services.crm_api import get_customer_kyc
+                cust = get_customer_kyc(name)
+                amount = cust.get("preapproved_limit", 100000)
+
             loan_data = {
                 "name": name,
-                "approved_amount": self.state.get("loan_amount", 0),
+                "approved_amount": amount,
                 "interest_rate": 10.5,
-                "tenure": self.state.get("tenure", 3),
-                "age": 30,  # Added age as you mentioned
+                "tenure": tenure,
+                "age": 30,
             }
 
-            response = self.sanction.generate_letter(loan_data)
+            print(f"[DEBUG] Generating sanction letter for {name} | Amount: ₹{amount}")
 
-            # Move to complete stage after sanction
+            response = self.sanction.generate_letter(loan_data)
             self.state["stage"] = "complete"
             print(f"[DEBUG] Transitioning to next stage: complete")
 
-            return response
-
+            return (
+                response
+                + f"\n\n💰 Requested Loan Amount: ₹{amount:,.2f}"
+                + "\n✅ Your sanction letter is now ready!"
+            )
 
         # === STAGE 6: Completed ===
         elif stage == "complete":
