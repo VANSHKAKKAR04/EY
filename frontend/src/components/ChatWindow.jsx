@@ -1,18 +1,33 @@
 import React, { useState } from "react";
-import { sendMessage } from "../services/api";
+import { sendMessage, uploadSalarySlip } from "../services/api";
 
 export default function ChatWindow() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [stage, setStage] = useState("greeting");
+  const [uploading, setUploading] = useState(false);
 
   const handleSend = async () => {
     const userMsg = { sender: "user", text: input };
     setMessages((prev) => [...prev, userMsg]);
 
-    const reply = await sendMessage(input);
-    const botMsg = { sender: "bot", text: reply };
-    setMessages((prev) => [...prev, botMsg]);
+    const { response, stage: newStage } = await sendMessage(input);
+    setMessages((prev) => [...prev, { sender: "bot", text: response }]);
+    setStage(newStage);
     setInput("");
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const res = await uploadSalarySlip(file);
+    setMessages((prev) => [
+      ...prev,
+      { sender: "bot", text: res.message || res.error },
+    ]);
+    setUploading(false);
   };
 
   return (
@@ -31,6 +46,36 @@ export default function ChatWindow() {
           </div>
         ))}
       </div>
+
+      {/* KYC Progress Section */}
+      {stage === "kyc" && (
+        <div className="mb-3 p-2 text-sm bg-yellow-50 border rounded">
+          🔍 KYC verification in progress...
+          {uploading ? (
+            <p className="text-blue-500 mt-1">Uploading salary slip...</p>
+          ) : (
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Upload Salary Slip:
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.png"
+                onChange={handleUpload}
+                className="mt-1"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {stage === "underwriting" && (
+        <div className="mb-3 p-2 text-sm bg-green-50 border rounded">
+          📊 Underwriting in progress... Evaluating eligibility and risk
+          profile.
+        </div>
+      )}
+
       <div className="flex">
         <input
           className="flex-1 border rounded p-2"

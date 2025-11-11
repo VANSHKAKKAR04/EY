@@ -23,23 +23,28 @@ class MasterAgent:
             "loan_amount": None,
             "tenure": None,
             "credit_score": None,
+            "salary_slip_uploaded": False,
         }
 
+    # ---------------------------------------------------
     def handle_message(self, msg: str):
         msg_lower = msg.lower()
         stage = self.state["stage"]
         print(f"\n[DEBUG] MasterAgent handling stage='{stage}' | message='{msg}'")
 
-        # === STAGE 1: Greeting ===
+        # === 1️⃣ GREETING ===
         if stage == "greeting":
             self.state["stage"] = "sales"
-            return "👋 Hello! I’m your Tata Capital AI Assistant. Would you like to apply for a personal loan today?"
+            return (
+                "👋 Hello! I’m your Tata Capital AI Assistant.\n"
+                "Would you like to apply for a personal loan today?"
+            )
 
-        # === STAGE 2: Sales Discussion ===
+        # === 2️⃣ SALES STAGE ===
         elif stage == "sales":
             response, next_stage = self.sales.handle_sales(msg)
 
-            # Capture context from SalesAgent
+            # Capture key context
             self.state["customer_name"] = self.sales.context.get("name")
             self.state["loan_amount"] = self.sales.context.get("amount")
             self.state["tenure"] = self.sales.context.get("tenure")
@@ -50,7 +55,7 @@ class MasterAgent:
 
             return response
 
-        # === STAGE 3: KYC Verification ===
+        # === 3️⃣ KYC VERIFICATION ===
         elif stage == "kyc":
             print(f"[DEBUG] Handling KYC stage for message: '{msg}'")
 
@@ -58,22 +63,47 @@ class MasterAgent:
             requested_amount = self.state.get("loan_amount")
 
             if not name:
-                print("[ERROR] Missing customer name during KYC.")
-                return "Could you please confirm your full name again for KYC verification?"
+                return "Could you please confirm your full name for KYC verification?"
 
             try:
                 response = self.verify.perform_kyc(name, requested_amount)
             except Exception as e:
                 print(f"[ERROR] KYC verification failed: {e}")
-                return "I ran into an issue verifying your KYC. Please try again."
+                return "❌ Error verifying KYC. Please try again."
 
+            # If user needs to upload salary slip
+            if "upload" in response.lower() or "salary slip" in msg_lower:
+                self.state["stage"] = "await_upload"
+                return (
+                    response
+                    + "\n📎 Please upload your latest salary slip to continue verification."
+                )
+
+            # If already verified (within pre-approved limit)
             if "verified" in response.lower():
                 self.state["stage"] = "underwriting"
-                return response + "\n✅ KYC verified! Now let’s check your loan eligibility."
-            else:
-                return response + "\nPlease re-enter your details."
+                return response + "\n✅ KYC verified! Moving to underwriting stage."
 
-        # === STAGE 4: Underwriting ===
+            return response
+
+        # === 3.5️⃣ WAITING FOR UPLOAD ===
+        elif stage == "await_upload":
+            # Once frontend confirms upload done (via /upload-salary-slip)
+            if "uploaded" in msg_lower or "done" in msg_lower:
+                self.state["salary_slip_uploaded"] = True
+                self.state["stage"] = "underwriting"
+                return (
+                    "📑 Salary slip received successfully.\n"
+                    "✅ KYC verification completed.\n"
+                    "Proceeding to underwriting stage..."
+                )
+            else:
+                return (
+                    "Please upload your salary slip using the upload button below "
+                    "before we can continue."
+                )
+
+        # === 4️⃣ UNDERWRITING ===
         elif stage == "underwriting":
             print(f"[DEBUG] Handling underwriting stage for message='{msg}'")
 
@@ -82,10 +112,8 @@ class MasterAgent:
             tenure = self.state.get("tenure", 3)
 
             if not name or not amount:
-                print("[ERROR] Missing customer data during underwriting.")
                 return "❌ Missing details — please re-enter your name and loan amount."
 
-            # ✅ Pass amount explicitly to underwriting agent
             response, next_stage = self.underwrite.evaluate_loan(
                 name, requested_amount=amount, interest_rate=12.0, tenure_years=tenure
             )
@@ -96,17 +124,15 @@ class MasterAgent:
 
             return response
 
-        # === STAGE 5: Sanction Letter ===
+        # === 5️⃣ SANCTION LETTER ===
         elif stage == "sanction":
             name = self.state["customer_name"]
             amount = self.state.get("loan_amount")
             tenure = self.state.get("tenure", 3)
 
             if not name:
-                print("[ERROR] Missing name during sanction stage.")
-                return "❌ Customer name missing — unable to generate sanction letter."
+                return "❌ Missing name — cannot generate sanction letter."
 
-            # Ensure fallback amount if missing
             if not amount or amount <= 0:
                 from services.crm_api import get_customer_kyc
                 cust = get_customer_kyc(name)
@@ -120,11 +146,8 @@ class MasterAgent:
                 "age": 30,
             }
 
-            print(f"[DEBUG] Generating sanction letter for {name} | Amount: ₹{amount}")
-
             response = self.sanction.generate_letter(loan_data)
             self.state["stage"] = "complete"
-            print(f"[DEBUG] Transitioning to next stage: complete")
 
             return (
                 response
@@ -132,7 +155,7 @@ class MasterAgent:
                 + "\n✅ Your sanction letter is now ready!"
             )
 
-        # === STAGE 6: Completed ===
+        # === 6️⃣ COMPLETE ===
         elif stage == "complete":
             return "🎉 Your loan process is complete! Would you like to start a new application?"
 

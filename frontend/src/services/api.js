@@ -1,8 +1,18 @@
-import axios from "axios";
+export async function sendMessage(message) {
+  const res = await fetch("http://localhost:8000/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  return res.json();
+}
 
-const API_URL = "http://127.0.0.1:8000";
-
-export const sendMessage = async (message) => {
-  const res = await axios.post(`${API_URL}/chat`, { message });
-  return res.data.response;
-};
+export async function uploadSalarySlip(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("http://localhost:8000/upload-salary-slip", {
+    method: "POST",
+    body: formData,
+  });
+  return res.json();
+}
