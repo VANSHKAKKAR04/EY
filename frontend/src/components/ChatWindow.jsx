@@ -1,20 +1,31 @@
 import React, { useState } from "react";
+import { Send, Upload, Loader2, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { sendMessage, uploadSalarySlip } from "../services/api";
 
 export default function ChatWindow() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([
+    { sender: "bot", text: "Hello! Welcome to our loan application service. How can I assist you today?" }
+  ]);
   const [input, setInput] = useState("");
   const [stage, setStage] = useState("greeting");
   const [uploading, setUploading] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
+    if (!input.trim() || sending) return;
+    
     const userMsg = { sender: "user", text: input };
     setMessages((prev) => [...prev, userMsg]);
-
-    const { response, stage: newStage } = await sendMessage(input);
-    setMessages((prev) => [...prev, { sender: "bot", text: response }]);
-    setStage(newStage);
     setInput("");
+    setSending(true);
+
+    try {
+      const { response, stage: newStage } = await sendMessage(input);
+      setMessages((prev) => [...prev, { sender: "bot", text: response }]);
+      setStage(newStage);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleUpload = async (e) => {
@@ -22,73 +33,149 @@ export default function ChatWindow() {
     if (!file) return;
 
     setUploading(true);
-    const res = await uploadSalarySlip(file);
-    setMessages((prev) => [
-      ...prev,
-      { sender: "bot", text: res.message || res.error },
-    ]);
-    setUploading(false);
+    try {
+      const res = await uploadSalarySlip(file);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: res.message || res.error },
+      ]);
+      if (res.stage) setStage(res.stage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-4 border rounded-lg">
-      <div className="h-96 overflow-y-auto mb-3 bg-gray-50 p-2 rounded">
+    <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+      {/* Header */}
+      <div className="bg-white rounded-t-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+          LA
+        </div>
+        <div>
+          <h2 className="font-semibold text-slate-800">Loan Assistant</h2>
+          <p className="text-xs text-slate-500">Online • Ready to help</p>
+        </div>
+      </div>
+
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto bg-white border-x border-slate-200 p-4 space-y-3">
         {messages.map((m, i) => (
           <div
             key={i}
-            className={`my-1 p-2 rounded ${
-              m.sender === "user"
-                ? "bg-blue-100 text-right"
-                : "bg-gray-200 text-left"
-            }`}
+            className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
           >
-            {m.text}
+            <div
+              className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
+                m.sender === "user"
+                  ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md"
+                  : "bg-slate-100 text-slate-800 rounded-bl-md"
+              }`}
+            >
+              <p className="text-sm leading-relaxed">{m.text}</p>
+            </div>
           </div>
         ))}
+        {sending && (
+          <div className="flex justify-start">
+            <div className="bg-slate-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* KYC Progress Section */}
+      {/* Status Indicators */}
       {stage === "kyc" && (
-        <div className="mb-3 p-2 text-sm bg-yellow-50 border rounded">
-          🔍 KYC verification in progress...
-          {uploading ? (
-            <p className="text-blue-500 mt-1">Uploading salary slip...</p>
-          ) : (
-            <div className="mt-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Upload Salary Slip:
-              </label>
-              <input
-                type="file"
-                accept=".pdf,.jpg,.png"
-                onChange={handleUpload}
-                className="mt-1"
-              />
+        <div className="bg-white border-x border-slate-200 px-4 py-3">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 text-sm mb-1">
+                  KYC Verification Required
+                </h3>
+                <p className="text-xs text-amber-700 mb-3">
+                  Please upload your salary slip to continue with the verification process
+                </p>
+                {uploading ? (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm font-medium">Uploading document...</span>
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-lg cursor-pointer hover:bg-amber-50 transition-colors group">
+                    <Upload className="w-4 h-4 text-amber-600 group-hover:text-amber-700" />
+                    <span className="text-sm font-medium text-amber-700 group-hover:text-amber-800">
+                      Upload Salary Slip
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.png"
+                      onChange={handleUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
       {stage === "underwriting" && (
-        <div className="mb-3 p-2 text-sm bg-green-50 border rounded">
-          📊 Underwriting in progress... Evaluating eligibility and risk
-          profile.
+        <div className="bg-white border-x border-slate-200 px-4 py-3">
+          <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-emerald-900 text-sm mb-1">
+                  Underwriting in Progress
+                </h3>
+                <p className="text-xs text-emerald-700">
+                  We're evaluating your eligibility and risk profile. This usually takes a few moments.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="flex">
-        <input
-          className="flex-1 border rounded p-2"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-        />
-        <button
-          onClick={handleSend}
-          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          Send
-        </button>
+      {/* Input Area */}
+      <div className="bg-white rounded-b-2xl shadow-sm border border-slate-200 p-4">
+        <div className="flex gap-2">
+          <input
+            className="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={sending}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || sending}
+            className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow flex items-center gap-2"
+          >
+            {sending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </div>
       </div>
     </div>
   );
