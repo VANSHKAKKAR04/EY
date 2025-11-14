@@ -30,6 +30,10 @@ class SanctionAgent:
         if not customer:
             return f"❌ Customer '{name}' not found in CRM."
 
+        # Normalize to dict if a list is returned
+        if isinstance(customer, list):
+            customer = customer[0]
+
         approved_amount = loan_data.get("approved_amount", customer.get("preapproved_limit", 0))
         rate = loan_data.get("interest_rate", 10.5)
         tenure = loan_data.get("tenure", 3)

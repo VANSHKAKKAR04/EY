@@ -7,7 +7,6 @@ from agents.sanction_agent import SanctionAgent
 class MasterAgent:
     """
     Pipeline:
-
     greeting → sales → kyc → kyc_collect → (awaiting salary slip upload)
     → underwriting → sanction → complete
     """
@@ -20,11 +19,9 @@ class MasterAgent:
 
         self.state = {
             "stage": "greeting",
-            # Sales input
             "customer_name": None,
-            "loan_amount": None,
-            "tenure": None,
-            # Verified KYC
+            "loan_amount": 0,
+            "tenure": 0,
             "verified_customer": None,
         }
 
@@ -33,9 +30,7 @@ class MasterAgent:
         stage = self.state["stage"]
         print(f"\n[DEBUG] MasterAgent handling stage='{stage}' | message='{msg}'")
 
-        # ============================================================
         # 1️⃣ GREETING
-        # ============================================================
         if stage == "greeting":
             self.state["stage"] = "sales"
             return {
@@ -44,38 +39,33 @@ class MasterAgent:
                 "awaitingSalarySlip": False,
             }
 
-        # ============================================================
         # 2️⃣ SALES STAGE
-        # ============================================================
         elif stage == "sales":
             response, next_stage = self.sales.handle_sales(msg)
-
             self.state["customer_name"] = self.sales.context.get("name")
-            self.state["loan_amount"] = self.sales.context.get("amount")
-            self.state["tenure"] = self.sales.context.get("tenure")
-
+            self.state["loan_amount"] = self.sales.context.get("amount") or 0
+            self.state["tenure"] = self.sales.context.get("tenure") or 0
             if next_stage:
                 self.state["stage"] = next_stage
-
             return {
                 "response": response,
                 "stage": next_stage or stage,
                 "awaitingSalarySlip": False,
             }
 
-        # ============================================================
         # 3️⃣ START KYC
-        # ============================================================
         elif stage == "kyc":
             response = self.verify.start_kyc()
             self.state["stage"] = "kyc_collect"
             return {"response": response, "stage": "kyc_collect", "awaitingSalarySlip": False}
 
-        # ============================================================
         # 3.1️⃣ KYC MULTI-STEP COLLECTION
-        # ============================================================
         elif stage == "kyc_collect":
             response, kyc_complete, verified_record = self.verify.collect_step(msg)
+
+            # Normalize to dict
+            if isinstance(verified_record, list):
+                verified_record = verified_record[0]
 
             if "upload your salary slip" in response.lower():
                 self.state["stage"] = "salary_slip"
@@ -96,16 +86,22 @@ class MasterAgent:
 
             return {"response": response, "stage": "kyc_collect", "awaitingSalarySlip": False}
 
-        # ============================================================
         # 4️⃣ UNDERWRITING
-        # ============================================================
         elif stage == "underwriting":
             c = self.state["verified_customer"]
-            amount = self.state["loan_amount"]
-            tenure = self.state["tenure"]
+            if not c:
+                return {"response": "❌ No verified customer found.", "stage": "complete", "awaitingSalarySlip": False}
+
+            # Normalize dict
+            if isinstance(c, list):
+                c = c[0]
+                self.state["verified_customer"] = c
+
+            amount = self.state["loan_amount"] or 0
+            tenure = self.state["tenure"] or 0
 
             response, next_stage = self.underwrite.evaluate_loan(
-                c["name"],
+                c,
                 requested_amount=amount,
                 interest_rate=12.0,
                 tenure_years=tenure,
@@ -120,13 +116,15 @@ class MasterAgent:
                 "awaitingSalarySlip": False,
             }
 
-        # ============================================================
         # 5️⃣ SANCTION LETTER
-        # ============================================================
         elif stage == "sanction":
             c = self.state["verified_customer"]
-            amount = self.state["loan_amount"]
-            tenure = self.state["tenure"]
+            if isinstance(c, list):
+                c = c[0]
+                self.state["verified_customer"] = c
+
+            amount = self.state["loan_amount"] or 0
+            tenure = self.state["tenure"] or 0
 
             loan_data = {
                 "name": c["name"],
@@ -147,9 +145,7 @@ class MasterAgent:
                 "awaitingSalarySlip": False,
             }
 
-        # ============================================================
         # 6️⃣ COMPLETED
-        # ============================================================
         elif stage == "complete":
             return {
                 "response": "🎉 Your loan journey is complete! Would you like to start a new application?",
@@ -167,6 +163,10 @@ class MasterAgent:
         print(f"[DEBUG] Received file upload: {filepath}")
 
         response, kyc_complete, record = self.verify.handle_salary_slip_upload(filepath)
+
+        # Normalize to dict
+        if isinstance(record, list):
+            record = record[0]
 
         if kyc_complete:
             self.state["verified_customer"] = record

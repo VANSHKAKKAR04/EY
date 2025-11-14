@@ -4,21 +4,35 @@ from services.crm_api import get_customer_kyc
 class UnderwritingAgent:
     def evaluate_loan(
         self,
-        name: str,
+        customer,  # can be dict or str
         requested_amount: float,
         interest_rate: float = 12.0,
         tenure_years: int = 3
     ):
         """
-        Evaluate a customer's loan eligibility using mock credit and CRM data.
+        Evaluate a customer's loan eligibility using CRM + credit data.
         Returns: (response_text, next_stage)
         """
-        cust = get_customer_kyc(name)
-        if not cust:
-            return (f"❌ Customer '{name}' not found in CRM.", None)
+        # If customer is a dict (from KYC), extract the name
+        if isinstance(customer, dict):
+            name = customer.get("name")
+            if not name:
+                return "❌ Invalid customer record: missing name.", "complete"
+            cust = customer
+        elif isinstance(customer, str):
+            name = customer
+            cust = get_customer_kyc(name)
+            if not cust:
+                return f"❌ Customer '{name}' not found in CRM.", "complete"
+        else:
+            return "❌ Invalid customer input.", "complete"
+
+        # Ensure cust is a dict
+        if isinstance(cust, list):
+            cust = cust[0]
 
         # --- Extract key data ---
-        score = get_credit_score(name)
+        score = cust.get("credit_score") or get_credit_score(name)
         pre_limit = cust.get("preapproved_limit", 0)
         salary = cust.get("salary", 0)
 
@@ -26,7 +40,7 @@ class UnderwritingAgent:
         if score < 700:
             return (
                 f"❌ Credit score {score} is below 700.\n"
-                f"Loan cannot be approved at this time.",
+                "Loan cannot be approved at this time.",
                 "complete",
             )
 
@@ -51,13 +65,13 @@ class UnderwritingAgent:
                     f"Credit Score: {score}\n"
                     f"Requested: ₹{requested_amount:,.0f}\n"
                     f"EMI: ₹{emi:,.2f} (≤ 50% of salary ₹{salary:,.0f})\n"
-                    f"Please upload your latest salary slip for verification.",
+                    "Please upload your latest salary slip for verification.",
                     "sanction",
                 )
             else:
                 return (
                     f"⚠️ EMI ₹{emi:,.2f} exceeds 50% of salary ₹{salary:,.0f}.\n"
-                    f"Loan cannot be approved without further review.",
+                    "Loan cannot be approved without further review.",
                     "complete",
                 )
 
