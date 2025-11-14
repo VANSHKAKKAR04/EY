@@ -6,147 +6,122 @@ import re
 
 class SalesAgent:
     """
-    SalesAgent — handles the conversational part of the loan sales journey.
-    - Collects loan details step by step.
-    - Retrieves customer profile (if found).
-    - Keeps conversation focused on ONE customer.
+    SalesAgent — ONLY handles the loan product discovery:
+    - No personal identification here.
+    - Collects loan amount and tenure.
+    - Passes control to KYC agent for customer identity verification.
     """
 
     def __init__(self, data_path="./data/customers.json"):
         print("[DEBUG] Initializing SalesAgent...")
         self.rag = RAGService(data_path)
+
         with open(data_path, "r") as f:
             self.customers = json.load(f)
 
-        # Conversation state
-        self.stage = "start"  # start → ask_name → ask_amount → ask_tenure → confirm
-        self.context = {"name": None, "amount": None, "tenure": None}
-        print("[DEBUG] SalesAgent initialized with", len(self.customers), "customers.")
+        # Only track loan details here
+        self.stage = "start"  # start → ask_amount → ask_tenure → confirm
+        self.context = {"amount": None, "tenure": None}
 
+        print("[DEBUG] SalesAgent loaded with", len(self.customers), "customers.")
+
+    # -----------------------------------------------------
     def extract_loan_details(self, user_message: str):
         """Extract numeric loan amount and tenure in years."""
-        print(f"[DEBUG] Extracting loan details from message: '{user_message}'")
-        amount_match = re.search(r'(\d{2,7})', user_message.replace(",", ""))
-        tenure_match = re.search(r'(\d+)\s*(?:year|yr|yrs|years)', user_message.lower())
+        print(f"[DEBUG] Extracting loan details from: '{user_message}'")
 
+        cleaned = user_message.replace(",", "").lower()
+
+        # Extract amount (numbers with 2-7 digits)
+        amount_match = re.search(r'(\d{2,7})', cleaned)
         amount = int(amount_match.group(1)) if amount_match else None
+
+        # Extract tenure (e.g. "5 years")
+        tenure_match = re.search(r'(\d+)\s*(?:year|yr|yrs|years)', cleaned)
         tenure = int(tenure_match.group(1)) if tenure_match else None
 
         print(f"[DEBUG] Extracted amount={amount}, tenure={tenure}")
         return amount, tenure
 
-    def get_customer_context(self, name_fragment: str):
-        """Retrieve customer details by name or partial match."""
-        print(f"[DEBUG] Searching for customer with name fragment: '{name_fragment}'")
-        for cust in self.customers:
-            if name_fragment.lower() in cust["name"].lower():
-                print(f"[DEBUG] Found matching customer: {cust['name']}")
-                return cust
-        print("[DEBUG] No customer match found.")
-        return None
-
+    # -----------------------------------------------------
     def handle_sales(self, user_message: str):
-        """Handles user chat flow through the loan discussion phase."""
+        """Main handler for the loan sales stage."""
         msg = user_message.strip()
-        print(f"\n[DEBUG] === Handling message: '{msg}' | Current stage: {self.stage} ===")
+        print(f"\n[DEBUG] SalesAgent stage='{self.stage}' | message='{msg}'")
 
+        # Try extracting any amount/tenure the user might have mentioned
         amount, tenure = self.extract_loan_details(msg)
 
-        # === Step 1: Greet user ===
+        # -------------------------------------------------
+        # STEP 1 — Initial greeting inside Sales
+        # -------------------------------------------------
         if self.stage == "start":
-            self.stage = "ask_name"
-            print("[DEBUG] Stage changed to 'ask_name'")
-            return "👋 Great! Please share your full name so I can check your pre-approved offers.", None
+            self.stage = "ask_amount"
+            print("[DEBUG] Transition to 'ask_amount'")
+            return (
+                "Great! Let's begin your loan application.\n"
+                "Please tell me how much loan amount you are looking for.",
+                None
+            )
 
-        # === Step 2: Handle name ===
-        elif self.stage == "ask_name":
-            print("[DEBUG] Attempting RAG retrieval for name:", msg)
-            context_docs = self.rag.retrieve(msg)
-            print("[DEBUG] RAG retrieved", len(context_docs), "documents.")
-
-            customer = self.get_customer_context(msg)
-
-            if context_docs:
-                context_text = context_docs[0]
-                print("[DEBUG] Using RAG document for personalization.")
-                prompt = f"""
-                You are a Tata Capital AI assistant helping with loan sales.
-                The customer has just entered their name: "{msg}".
-
-                Retrieved background info:
-                {context_text}
-
-                Based on this, acknowledge the customer by name and mention:
-                - Their pre-approved loan limit
-                - Their credit score
-                - Ask politely for the loan amount they wish to apply for
-                """
-                self.stage = "ask_amount"
-                self.context["name"] = msg
-                print(f"[DEBUG] Stage changed to 'ask_amount' for customer: {msg}")
-                return query_mistral(prompt), None
-
-            elif customer:
-                print("[DEBUG] Found customer locally:", customer["name"])
-                self.stage = "ask_amount"
-                self.context["name"] = customer["name"]
-                response = (
-                    f"Thanks {customer['name']}! Based on our records, "
-                    f"your pre-approved limit is ₹{customer['preapproved_limit']} "
-                    f"and your credit score is {customer['credit_score']}.\n"
-                    f"Please tell me the loan amount you wish to apply for."
-                )
-                return response, None
-
-            else:
-                print("[DEBUG] No RAG or local customer match found.")
-                self.stage = "ask_amount"
-                self.context["name"] = msg
-                return f"Thanks {msg}! Please tell me the loan amount you’re looking for.", None
-
-        # === Step 3: Loan amount ===
+        # -------------------------------------------------
+        # STEP 2 — Ask for loan amount
+        # -------------------------------------------------
         elif self.stage == "ask_amount":
-            print("[DEBUG] Processing loan amount:", amount)
             if not amount:
                 print("[DEBUG] No valid amount found.")
-                return "Could you please mention the loan amount in ₹?", None
+                return "Sure — please enter your desired loan amount in ₹.", None
 
             self.context["amount"] = amount
             self.stage = "ask_tenure"
-            print(f"[DEBUG] Stage changed to 'ask_tenure' with amount={amount}")
-            return f"Got it! ₹{amount} noted. Now, how many years do you want the repayment tenure to be?", None
+            print(f"[DEBUG] Transition to 'ask_tenure' with amount={amount}")
 
-        # === Step 4: Tenure ===
+            return (
+                f"Got it! ₹{amount:,} noted.\n"
+                "How many years would you like the repayment tenure to be?",
+                None
+            )
+
+        # -------------------------------------------------
+        # STEP 3 — Ask for tenure
+        # -------------------------------------------------
         elif self.stage == "ask_tenure":
-            print("[DEBUG] Processing tenure:", tenure)
             if not tenure:
                 print("[DEBUG] No valid tenure found.")
-                return "Please specify the repayment tenure (e.g., 3 years, 5 years).", None
+                return (
+                    "Please mention the repayment period (e.g., 3 years, 5 years).",
+                    None
+                )
 
             self.context["tenure"] = tenure
             self.stage = "confirm"
-            name = self.context["name"]
-            amount = self.context["amount"]
-            print(f"[DEBUG] Stage changed to 'confirm' | name={name}, amount={amount}, tenure={tenure}")
+
+            print(f"[DEBUG] Transition to 'confirm' | amount={self.context['amount']} | tenure={tenure}")
 
             prompt = f"""
-            You are a Tata Capital Sales Assistant AI.
-            The customer "{name}" has requested a loan of ₹{amount} for {tenure} years.
-            Mention that interest rate typically ranges 10.5%–14%.
-            Give a polite, confident confirmation and encourage moving to KYC verification next.
+            You are a Tata Capital AI Sales Assistant.
+            The customer wants a loan of ₹{self.context['amount']} for {tenure} years.
+
+            Respond:
+            - Acknowledge the amount and tenure
+            - Mention typical interest range (10.5%–14%)
+            - Politely ask to proceed to KYC next
             """
+
             return query_mistral(prompt), "kyc"
 
-        # === Step 5: Confirm ===
+        # -------------------------------------------------
+        # STEP 4 — Final confirmation (fallback)
+        # -------------------------------------------------
         elif self.stage == "confirm":
-            print("[DEBUG] Final confirmation stage reached.")
-            response = (
-                f"Thanks {self.context['name']}! Your loan of ₹{self.context['amount']} "
-                f"for {self.context['tenure']} years has been noted. "
-                "Let’s proceed to verify your KYC details."
+            print("[DEBUG] Final confirm stage")
+            return (
+                f"Great! Loan amount ₹{self.context['amount']:,} "
+                f"for {self.context['tenure']} years is noted.\n"
+                "Let’s proceed with KYC verification.",
+                "kyc"
             )
-            return response, "kyc"
 
-        # === Fallback ===
-        print("[DEBUG] Reached fallback response.")
-        return "I didn’t quite get that — could you rephrase?", None
+        # -------------------------------------------------
+        print("[DEBUG] Fallback reached")
+        return "I didn't quite understand — could you rephrase?", None

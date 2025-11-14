@@ -2,40 +2,60 @@ import json
 from pathlib import Path
 from services.credit_api import get_credit_score
 
-# Define base URL (used if/when you expose CRM via API)
-BASE_URL = "http://127.0.0.1:8001"
-
-# Path to local dummy CRM database
+# Path to CRM database
 CUSTOMERS_PATH = Path(__file__).resolve().parent.parent / "data" / "customers.json"
 
-def get_customer_kyc(name: str):
-    """
-    Simulate CRM KYC lookup.
-    Matches partial name (case-insensitive) and returns enriched KYC info.
-    """
+def _load_customers():
+    """Internal function to load CRM data."""
     try:
         with open(CUSTOMERS_PATH, "r") as f:
-            customers = json.load(f)
+            return json.load(f)
     except FileNotFoundError:
         print(f"[ERROR] customers.json not found at {CUSTOMERS_PATH}")
-        return None
+        return []
 
-    for cust in customers:
-        if name.lower() in cust["name"].lower():
-            credit_score = cust.get("credit_score") or get_credit_score(name)
 
-            return {
-                "id": cust.get("id"),
-                "name": cust["name"],
-                "age": cust.get("age", "N/A"),
-                "city": cust.get("city", "Unknown"),
-                "phone": cust.get("phone", "N/A"),
-                "salary": cust.get("salary", 0),
-                # "credit_score": credit_score,
-                "preapproved_limit": cust.get("preapproved_limit", 0),
-                # "requested_loan": cust.get("requested_loan", cust.get("preapproved_limit", 0)),
-                "existing_loans": cust.get("existing_loans", 0),
-            }
+# ──────────────────────────────────────────────────────────
+# 1. RETURN ALL CUSTOMERS (RAW)
+# ──────────────────────────────────────────────────────────
+def get_all_customers():
+    """
+    Returns full raw customer list for matching name, age, city, phone, salary.
+    """
+    return _load_customers()
 
-    print(f"[INFO] No CRM record found for '{name}'.")
-    return None
+
+# ──────────────────────────────────────────────────────────
+# 2. GET CUSTOMER BY ID
+# ──────────────────────────────────────────────────────────
+def get_customer_by_id(cid: int):
+    """Return a customer by ID."""
+    customers = _load_customers()
+    return next((c for c in customers if c["id"] == cid), None)
+
+
+# ──────────────────────────────────────────────────────────
+# 3. GET CUSTOMER BY NAME (EXACT MATCH OR PARTIAL)
+# ──────────────────────────────────────────────────────────
+def get_customer_kyc(name: str):
+    """
+    Fetch customers whose name matches (case-insensitive).
+    Returns a LIST of matches (not a single dict).
+
+    VerificationAgent handles:
+      - multiple matches → ask for ID
+      - single match → proceed
+    """
+    customers = _load_customers()
+
+    matches = [
+        cust for cust in customers
+        if name.lower() in cust["name"].lower()
+    ]
+
+    # Add missing credit scores if needed
+    for cust in matches:
+        if not cust.get("credit_score"):
+            cust["credit_score"] = get_credit_score(cust["name"])
+
+    return matches
