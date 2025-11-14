@@ -134,16 +134,19 @@ class MasterAgent:
                 "age": c.get("age", 30),
             }
 
-            letter = self.sanction.generate_letter(loan_data)
+            # Updated: generate_letter returns (message, filename)
+            message, filename = self.sanction.generate_letter(loan_data)
             self.state["stage"] = "complete"
 
             return {
-                "response": letter
+                "response": message
                 + f"\n\n💰 Loan Amount: ₹{amount:,}"
                 + "\n✅ Your sanction letter is ready!",
                 "stage": "complete",
                 "awaitingSalarySlip": False,
+                "file": filename,  # <-- frontend can use this to download
             }
+
 
         # 6️⃣ COMPLETED
         elif stage == "complete":

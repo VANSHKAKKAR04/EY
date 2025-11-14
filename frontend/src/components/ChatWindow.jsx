@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Send, Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Send,
+  Upload,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Download,
+} from "lucide-react";
 import { sendMessage, uploadSalarySlip } from "../services/api";
 
 export default function ChatWindow() {
@@ -32,9 +39,10 @@ export default function ChatWindow() {
         message,
         stage: newStage,
         awaitingSalarySlip: awaiting,
+        file,
       } = await sendMessage(msg);
 
-      setMessages((prev) => [...prev, { sender: "bot", text: message }]);
+      setMessages((prev) => [...prev, { sender: "bot", text: message, file }]);
       setStage(newStage);
       setAwaitingSalarySlip(awaiting);
     } finally {
@@ -56,9 +64,13 @@ export default function ChatWindow() {
         message,
         stage: newStage,
         awaitingSalarySlip: awaiting,
+        file: fileLink,
       } = await uploadSalarySlip(file);
 
-      setMessages((prev) => [...prev, { sender: "bot", text: message }]);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: message, file: fileLink },
+      ]);
       setStage(newStage);
       setAwaitingSalarySlip(awaiting);
     } finally {
@@ -71,6 +83,16 @@ export default function ChatWindow() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  // -----------------------------------------------------------
+  // HANDLE SANCTION LETTER DOWNLOAD
+  // -----------------------------------------------------------
+  const downloadFile = (filename) => {
+    window.open(
+      `http://localhost:8000/download-sanction/${filename}`,
+      "_blank"
+    );
   };
 
   return (
@@ -103,6 +125,15 @@ export default function ChatWindow() {
               }`}
             >
               <p className="text-sm leading-relaxed">{m.text}</p>
+              {m.file && (
+                <button
+                  onClick={() => downloadFile(m.file)}
+                  className="mt-2 flex items-center gap-1 text-blue-600 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Sanction Letter
+                </button>
+              )}
             </div>
           </div>
         ))}

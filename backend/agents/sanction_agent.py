@@ -18,17 +18,18 @@ class SanctionAgent:
                 "interest_rate": float,
                 "tenure": int
             }
+        Returns a tuple: (message:str, file:str)
         """
         name = loan_data.get("name")
         if not name:
-            return "❌ Customer name missing — unable to generate sanction letter."
+            return ("❌ Customer name missing — unable to generate sanction letter.", None)
 
-        # ✅ Fetch supporting data
+        # Fetch supporting data
         customer = get_customer_kyc(name)
         credit_score = get_credit_score(name)
 
         if not customer:
-            return f"❌ Customer '{name}' not found in CRM."
+            return (f"❌ Customer '{name}' not found in CRM.", None)
 
         # Normalize to dict if a list is returned
         if isinstance(customer, list):
@@ -38,7 +39,7 @@ class SanctionAgent:
         rate = loan_data.get("interest_rate", 10.5)
         tenure = loan_data.get("tenure", 3)
 
-        # ✅ Generate PDF
+        # Generate PDF
         file_path = generate_sanction_pdf(
             name=name,
             amount=approved_amount,
@@ -47,9 +48,14 @@ class SanctionAgent:
             credit_score=credit_score
         )
 
-        return (
+        path_obj = Path(file_path)  # ensure Path object
+
+        message = (
             f"✅ Loan sanctioned for {name}!\n"
             f"Amount: ₹{approved_amount:,.2f} | Interest: {rate}% | Tenure: {tenure} years\n"
             f"Credit Score: {credit_score}\n\n"
-            f"📄 Sanction letter generated at: {file_path}"
+            f"📄 Your sanction letter is ready!"
         )
+
+        # Return both message and file name for frontend download
+        return message, path_obj.name

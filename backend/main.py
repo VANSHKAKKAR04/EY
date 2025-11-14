@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from agents.master_agent import MasterAgent
 import shutil
 from pathlib import Path
@@ -17,6 +18,8 @@ app.add_middleware(
 master_agent = MasterAgent()
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+SANCTION_DIR = Path("sanctions")
+SANCTION_DIR.mkdir(exist_ok=True)
 
 
 # ============================================================
@@ -35,6 +38,7 @@ async def handle_chat(request: Request):
             "message": response.get("response", str(response)),
             "stage": response.get("stage", master_agent.state["stage"]),
             "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
+            "file": response.get("file"),  # optional PDF filename
         }
 
     # fallback for plain string
@@ -65,4 +69,22 @@ async def upload_salary_slip(file: UploadFile = File(...)):
         "message": result.get("response", "Upload complete"),
         "stage": result.get("stage", master_agent.state["stage"]),
         "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
+        "file": result.get("file"),  # optional PDF filename
     }
+
+
+# ============================================================
+# 🟨 DOWNLOAD SANCTION LETTER ENDPOINT
+# ============================================================
+@app.get("/download-sanction/{filename}")
+async def download_sanction_letter(filename: str = FPath(...)):
+    file_path = SANCTION_DIR / filename
+
+    if not file_path.exists():
+        return {"error": "File not found."}
+
+    return FileResponse(
+        path=file_path,
+        filename=file_path.name,
+        media_type="application/pdf"
+    )
