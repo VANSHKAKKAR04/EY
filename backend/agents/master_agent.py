@@ -6,9 +6,10 @@ from agents.sanction_agent import SanctionAgent
 
 class MasterAgent:
     """
-    Pipeline:
-    greeting → sales → kyc → kyc_collect → (awaiting salary slip upload)
-    → underwriting → sanction → complete
+    Correct Pipeline:
+    greeting → sales → kyc → kyc_collect → underwriting
+    → salary_slip (ONLY IF underwriting requests)
+    → underwriting (final check) → sanction → complete
     """
 
     def __init__(self):
@@ -23,6 +24,7 @@ class MasterAgent:
             "loan_amount": 0,
             "tenure": 0,
             "verified_customer": None,
+            "salary_slip_uploaded": False,     # <--- NEW FLAG
         }
 
     # =================================================================
@@ -30,7 +32,9 @@ class MasterAgent:
         stage = self.state["stage"]
         print(f"\n[DEBUG] MasterAgent handling stage='{stage}' | message='{msg}'")
 
+        # --------------------------------------------------------------
         # 1️⃣ GREETING
+        # --------------------------------------------------------------
         if stage == "greeting":
             self.state["stage"] = "sales"
             return {
@@ -39,41 +43,45 @@ class MasterAgent:
                 "awaitingSalarySlip": False,
             }
 
+        # --------------------------------------------------------------
         # 2️⃣ SALES STAGE
+        # --------------------------------------------------------------
         elif stage == "sales":
             response, next_stage = self.sales.handle_sales(msg)
+
             self.state["customer_name"] = self.sales.context.get("name")
             self.state["loan_amount"] = self.sales.context.get("amount") or 0
             self.state["tenure"] = self.sales.context.get("tenure") or 0
+
             if next_stage:
                 self.state["stage"] = next_stage
+
             return {
                 "response": response,
                 "stage": next_stage or stage,
                 "awaitingSalarySlip": False,
             }
 
-        # 3️⃣ START KYC
+        # --------------------------------------------------------------
+        # 3️⃣ KYC START
+        # --------------------------------------------------------------
         elif stage == "kyc":
             response = self.verify.start_kyc()
             self.state["stage"] = "kyc_collect"
-            return {"response": response, "stage": "kyc_collect", "awaitingSalarySlip": False}
+            return {
+                "response": response,
+                "stage": "kyc_collect",
+                "awaitingSalarySlip": False,
+            }
 
+        # --------------------------------------------------------------
         # 3.1️⃣ KYC MULTI-STEP COLLECTION
+        # --------------------------------------------------------------
         elif stage == "kyc_collect":
             response, kyc_complete, verified_record = self.verify.collect_step(msg)
 
-            # Normalize to dict
             if isinstance(verified_record, list):
                 verified_record = verified_record[0]
-
-            if "upload your salary slip" in response.lower():
-                self.state["stage"] = "salary_slip"
-                return {
-                    "response": response,
-                    "stage": "salary_slip",
-                    "awaitingSalarySlip": True,
-                }
 
             if kyc_complete:
                 self.state["verified_customer"] = verified_record
@@ -84,15 +92,24 @@ class MasterAgent:
                     "awaitingSalarySlip": False,
                 }
 
-            return {"response": response, "stage": "kyc_collect", "awaitingSalarySlip": False}
+            return {
+                "response": response,
+                "stage": "kyc_collect",
+                "awaitingSalarySlip": False,
+            }
 
+        # --------------------------------------------------------------
         # 4️⃣ UNDERWRITING
+        # --------------------------------------------------------------
         elif stage == "underwriting":
             c = self.state["verified_customer"]
             if not c:
-                return {"response": "❌ No verified customer found.", "stage": "complete", "awaitingSalarySlip": False}
+                return {
+                    "response": "❌ No verified customer found.",
+                    "stage": "complete",
+                    "awaitingSalarySlip": False,
+                }
 
-            # Normalize dict
             if isinstance(c, list):
                 c = c[0]
                 self.state["verified_customer"] = c
@@ -100,6 +117,24 @@ class MasterAgent:
             amount = self.state["loan_amount"] or 0
             tenure = self.state["tenure"] or 0
 
+            # If salary slip has already been uploaded → underwriting should NEVER ask again
+            if self.state["salary_slip_uploaded"]:
+                print("[DEBUG] Salary slip already uploaded → skip conditional check")
+
+                response = (
+                    "📄 Salary slip verified successfully.\n"
+                    "Proceeding with final approval..."
+                )
+
+                # Immediate sanction
+                self.state["stage"] = "sanction"
+                return {
+                    "response": response,
+                    "stage": "sanction",
+                    "awaitingSalarySlip": False,
+                }
+
+            # ---- NORMAL UNDERWRITING ----
             response, next_stage = self.underwrite.evaluate_loan(
                 c,
                 requested_amount=amount,
@@ -107,21 +142,36 @@ class MasterAgent:
                 tenure_years=tenure,
             )
 
+            print("[DEBUG] Underwriting returned:", next_stage)
+
             if next_stage:
                 self.state["stage"] = next_stage
 
+            awaiting_slip = next_stage == "salary_slip"
+
             return {
                 "response": response,
-                "stage": next_stage or stage,
-                "awaitingSalarySlip": False,
+                "stage": next_stage,
+                "awaitingSalarySlip": awaiting_slip,
             }
 
-        # 5️⃣ SANCTION LETTER
+        # --------------------------------------------------------------
+        # 5️⃣ SALARY SLIP UPLOAD STAGE
+        # --------------------------------------------------------------
+        elif stage == "salary_slip":
+            return {
+                "response": "📄 Please upload your latest salary slip to continue.",
+                "stage": "salary_slip",
+                "awaitingSalarySlip": True,
+            }
+
+        # --------------------------------------------------------------
+        # 6️⃣ SANCTION LETTER
+        # --------------------------------------------------------------
         elif stage == "sanction":
             c = self.state["verified_customer"]
             if isinstance(c, list):
                 c = c[0]
-                self.state["verified_customer"] = c
 
             amount = self.state["loan_amount"] or 0
             tenure = self.state["tenure"] or 0
@@ -134,21 +184,21 @@ class MasterAgent:
                 "age": c.get("age", 30),
             }
 
-            # Updated: generate_letter returns (message, filename)
             message, filename = self.sanction.generate_letter(loan_data)
             self.state["stage"] = "complete"
 
             return {
                 "response": message
-                + f"\n\n💰 Loan Amount: ₹{amount:,}"
-                + "\n✅ Your sanction letter is ready!",
+                + f"\n\n💰 Loan Amount: ₹{amount:,}\n"
+                + "✅ Your sanction letter is ready!",
                 "stage": "complete",
                 "awaitingSalarySlip": False,
-                "file": filename,  # <-- frontend can use this to download
+                "file": filename,
             }
 
-
-        # 6️⃣ COMPLETED
+        # --------------------------------------------------------------
+        # 7️⃣ COMPLETE
+        # --------------------------------------------------------------
         elif stage == "complete":
             return {
                 "response": "🎉 Your loan journey is complete! Would you like to start a new application?",
@@ -156,8 +206,11 @@ class MasterAgent:
                 "awaitingSalarySlip": False,
             }
 
-        # fallback
-        return {"response": "I didn't quite get that — could you rephrase?", "stage": stage, "awaitingSalarySlip": False}
+        return {
+            "response": "I didn't understand — could you rephrase?",
+            "stage": stage,
+            "awaitingSalarySlip": False,
+        }
 
     # =================================================================
     # FILE UPLOAD HANDLER
@@ -165,15 +218,24 @@ class MasterAgent:
     def handle_file_upload(self, filepath: str):
         print(f"[DEBUG] Received file upload: {filepath}")
 
-        response, kyc_complete, record = self.verify.handle_salary_slip_upload(filepath)
+        response, slip_accepted, updated_record = self.verify.handle_salary_slip_upload(filepath)
 
-        # Normalize to dict
-        if isinstance(record, list):
-            record = record[0]
+        if isinstance(updated_record, list):
+            updated_record = updated_record[0]
 
-        if kyc_complete:
-            self.state["verified_customer"] = record
+        if slip_accepted:
+            self.state["verified_customer"] = updated_record
+            self.state["salary_slip_uploaded"] = True     # <--- KEY FIX
             self.state["stage"] = "underwriting"
-            return {"response": response, "stage": "underwriting", "awaitingSalarySlip": False}
 
-        return {"response": response, "stage": "salary_slip", "awaitingSalarySlip": True}
+            return {
+                "response": "📄 Salary slip uploaded successfully!\nRe-evaluating your profile...",
+                "stage": "underwriting",
+                "awaitingSalarySlip": False,
+            }
+
+        return {
+            "response": response,
+            "stage": "salary_slip",
+            "awaitingSalarySlip": True,
+        }

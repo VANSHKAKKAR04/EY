@@ -158,46 +158,45 @@ export default function ChatWindow() {
       </div>
 
       {/* SALARY SLIP UPLOAD */}
-      {awaitingSalarySlip &&
-        (stage.includes("slip") || stage.includes("kyc")) && (
-          <div className="bg-white border-x border-slate-200 px-4 py-3">
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-amber-900 text-sm mb-1">
-                    KYC Verified — Upload Required
-                  </h3>
-                  <p className="text-xs text-amber-700 mb-3">
-                    Please upload your salary slip to proceed.
-                  </p>
+      {awaitingSalarySlip && stage === "salary_slip" && (
+        <div className="bg-white border-x border-slate-200 px-4 py-3">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 text-sm mb-1">
+                  Upload Required
+                </h3>
+                <p className="text-xs text-amber-700 mb-3">
+                  Please upload your salary slip to proceed.
+                </p>
 
-                  {uploading ? (
-                    <div className="flex items-center gap-2 text-blue-600">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm font-medium">
-                        Uploading document...
-                      </span>
-                    </div>
-                  ) : (
-                    <label className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-lg cursor-pointer hover:bg-amber-50 transition-colors">
-                      <Upload className="w-4 h-4 text-amber-600" />
-                      <span className="text-sm font-medium text-amber-700">
-                        Upload Salary Slip
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg"
-                        onChange={handleUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
+                {uploading ? (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm font-medium">
+                      Uploading document...
+                    </span>
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-lg cursor-pointer hover:bg-amber-50 transition-colors">
+                    <Upload className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-medium text-amber-700">
+                      Upload Salary Slip
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg"
+                      onChange={handleUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* UNDERWRITING BANNER */}
       {stage === "underwriting" && (

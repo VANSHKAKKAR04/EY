@@ -1,94 +1,73 @@
 from services.credit_api import get_credit_score
 from services.crm_api import get_customer_kyc
 
+
 class UnderwritingAgent:
+
     def evaluate_loan(
         self,
-        customer,  # can be dict or str
+        customer,              
         requested_amount: float,
         interest_rate: float = 12.0,
         tenure_years: int = 3
     ):
         """
-        Evaluate a customer's loan eligibility using CRM + credit data.
-        Returns: (response_text, next_stage)
+        Correct underwriting logic:
+        - Salary slip is ONLY needed when:
+            pre_limit < requested_amount <= 2 * pre_limit
         """
-        # If customer is a dict (from KYC), extract the name
-        if isinstance(customer, dict):
-            name = customer.get("name")
-            if not name:
-                return "❌ Invalid customer record: missing name.", "complete"
-            cust = customer
-        elif isinstance(customer, str):
-            name = customer
-            cust = get_customer_kyc(name)
-            if not cust:
-                return f"❌ Customer '{name}' not found in CRM.", "complete"
-        else:
-            return "❌ Invalid customer input.", "complete"
+        if not isinstance(customer, dict):
+            return "❌ Invalid customer data received.", "complete"
 
-        # Ensure cust is a dict
-        if isinstance(cust, list):
-            cust = cust[0]
+        name = customer.get("name")
+        if not name:
+            return "❌ Customer name missing.", "complete"
 
-        # --- Extract key data ---
-        score = cust.get("credit_score") or get_credit_score(name)
-        pre_limit = cust.get("preapproved_limit", 0)
-        salary = cust.get("salary", 0)
+        salary = customer.get("salary", 0)
+        pre_limit = customer.get("preapproved_limit", 0)
 
-        # --- Stage 1: Credit score gate ---
+        # 1. Get credit score
+        score = customer.get("credit_score") or get_credit_score(name)
+
+        # --- Reject low score ---
         if score < 700:
             return (
-                f"❌ Credit score {score} is below 700.\n"
-                "Loan cannot be approved at this time.",
-                "complete",
+                f"❌ Your credit score is {score}, below the required 700.\n"
+                "Loan cannot be approved.",
+                "complete"
             )
 
-        # --- Stage 2: Instant approval (within pre-approved limit) ---
+        # ==============================================================
+        #  CASE 1: INSTANT APPROVAL  (NO SALARY SLIP NEEDED)
+        # ==============================================================
         if requested_amount <= pre_limit:
             return (
                 f"✅ Instant Approval!\n"
-                f"Credit Score: {score}\n"
-                f"Requested: ₹{requested_amount:,.0f}\n"
-                f"Within pre-approved limit of ₹{pre_limit:,.0f}.",
-                "sanction",
+                f"Amount: ₹{requested_amount:,.0f}\n"
+                f"Within your pre-approved limit (₹{pre_limit:,.0f}).\n"
+                "Generating sanction letter...",
+                "sanction"
             )
 
-        # --- Stage 3: Conditional approval (up to 2× pre-limit) ---
+        # ==============================================================
+        #  CASE 2: CONDITIONAL – SALARY SLIP REQUIRED
+        #  Trigger the salary_slip stage HERE.
+        # ==============================================================
         elif requested_amount <= 2 * pre_limit:
-            emi = self.calculate_emi(requested_amount, interest_rate, tenure_years)
-            max_emi = 0.5 * salary
 
-            if emi <= max_emi:
-                return (
-                    f"✅ Conditional Approval\n"
-                    f"Credit Score: {score}\n"
-                    f"Requested: ₹{requested_amount:,.0f}\n"
-                    f"EMI: ₹{emi:,.2f} (≤ 50% of salary ₹{salary:,.0f})\n"
-                    "Please upload your latest salary slip for verification.",
-                    "sanction",
-                )
-            else:
-                return (
-                    f"⚠️ EMI ₹{emi:,.2f} exceeds 50% of salary ₹{salary:,.0f}.\n"
-                    "Loan cannot be approved without further review.",
-                    "complete",
-                )
+            # Tell frontend to request salary slip
+            return (
+                "Your requested amount exceeds your pre-approved limit.\n"
+                "⚠️ To proceed further, we need your salary slip.\n"
+                "Please upload your latest salary slip for EMI evaluation.",
+                "salary_slip"         # <–––––––– KEY PART
+            )
 
-        # --- Stage 4: Rejection ---
+        # ==============================================================
+        #  CASE 3: REJECTION – Amount exceeds 2× limit
+        # ==============================================================
         return (
-            f"❌ Requested ₹{requested_amount:,.0f} exceeds twice your "
-            f"pre-approved limit (₹{2 * pre_limit:,.0f}).",
-            "complete",
+            f"❌ Requested amount ₹{requested_amount:,.0f} exceeds "
+            f"2× your pre-approved limit (₹{2 * pre_limit:,.0f}).",
+            "complete"
         )
-
-    # -------------------------------------------
-    @staticmethod
-    def calculate_emi(principal: float, annual_rate: float, years: int) -> float:
-        """Calculate EMI using reducing balance formula."""
-        r = annual_rate / (12 * 100)
-        n = years * 12
-        if r == 0:
-            return principal / n
-        emi = principal * r * ((1 + r) ** n) / ((1 + r) ** n - 1)
-        return emi

@@ -119,19 +119,20 @@ class VerificationAgent:
                 return "❌ Salary mismatch. Enter the correct monthly salary."
 
             # All details matched — now request salary slip
-            self.step = "awaiting_salary_slip"
-            return (
-                "All details verified ✔️\n"
-                "📄 Please upload your salary slip for validation."
-            )
+            # self.step = "awaiting_salary_slip"
+            # return (
+            #     "All details verified ✔️\n"
+            #     "📄 Please upload your salary slip for validation."
+            # )
 
         # ---------------- STEP 7 — Waiting for Salary Slip ------------------
-        if self.step == "awaiting_salary_slip":
-            return (
-                "📄 Waiting for salary slip…\n"
-                "Please upload your salary slip using the upload button."
-            )
+        # if self.step == "awaiting_salary_slip":
+        #     return (
+        #         "📄 Waiting for salary slip…\n"
+        #         "Please upload your salary slip using the upload button."
+        #     )
 
+        self.step = "kyc_complete"
         # ---------------- STEP 8 — After completion ------------------
         if self.step == "kyc_complete":
             return "KYC already completed."
