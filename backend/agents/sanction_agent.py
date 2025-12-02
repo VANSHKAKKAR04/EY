@@ -1,4 +1,4 @@
-from utils.pdf_generator import generate_sanction_pdf
+from utils.pdf_generator import generate_sanction_pdf, calculate_emi
 from services.crm_api import get_customer_kyc
 from services.credit_api import get_credit_score
 from pathlib import Path
@@ -39,7 +39,9 @@ class SanctionAgent:
         rate = loan_data.get("interest_rate", 10.5)
         tenure = loan_data.get("tenure", 3)
 
-        # Generate PDF
+        # Compute EMI and Generate PDF
+        # Guard against invalid tenures
+        emi = calculate_emi(approved_amount, rate, tenure) if tenure and tenure > 0 else 0.0
         file_path = generate_sanction_pdf(
             name=name,
             amount=approved_amount,
@@ -52,8 +54,8 @@ class SanctionAgent:
 
         message = (
             f"✅ Loan sanctioned for {name}!\n"
-            f"Amount: ₹{approved_amount:,.2f} | Interest: {rate}% | Tenure: {tenure} years\n"
-            f"Credit Score: {credit_score}\n\n"
+            f"Amount: ₹{approved_amount:,.2f} | Interest: {rate:.2f}% | Tenure: {tenure} years | EMI: ₹{emi:,.2f}\n"
+            f"Credit Score: {credit_score if credit_score is not None else 'Not available'}\n\n"
             f"📄 Your sanction letter is ready!"
         )
 

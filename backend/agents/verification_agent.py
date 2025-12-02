@@ -170,6 +170,8 @@ class VerificationAgent:
         if "credit_score" not in record or record["credit_score"] is None:
             record["credit_score"] = get_credit_score(record["name"])
 
+        # Mark the customer record as having a validated salary slip
+        record["salary_slip_valid"] = True
         self.step = "kyc_complete"
 
         return (

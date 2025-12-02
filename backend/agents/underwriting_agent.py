@@ -1,5 +1,6 @@
 from services.credit_api import get_credit_score
 from services.crm_api import get_customer_kyc
+from utils.pdf_generator import calculate_emi
 
 
 class UnderwritingAgent:
@@ -55,7 +56,31 @@ class UnderwritingAgent:
         # ==============================================================
         elif requested_amount <= 2 * pre_limit:
 
-            # Tell frontend to request salary slip
+            # If salary slip already validated, compute EMI and compare to salary
+            if customer.get("salary_slip_valid"):
+                salary = customer.get("salary", 0)
+                # Guard: if we do not have a salary value, request salary slip again
+                if not salary or salary <= 0:
+                    return (
+                        "⚠️ Salary information is missing or invalid. Please provide a valid salary slip.",
+                        "salary_slip"
+                    )
+
+                emi = calculate_emi(requested_amount, interest_rate, tenure_years)
+                if emi <= 0.5 * salary:
+                    return (
+                        f"✅ Conditional approval after salary validation!\n"
+                        f"Amount: ₹{requested_amount:,.0f} | Estimated EMI: ₹{emi:,.2f} | Salary: ₹{salary:,.0f}\n"
+                        "Proceeding to sanction letter generation...",
+                        "sanction"
+                    )
+                else:
+                    return (
+                        f"❌ EMI (₹{emi:,.2f}) exceeds 50% of your salary (₹{salary:,.0f}). Loan cannot be approved.",
+                        "complete"
+                    )
+
+            # Tell frontend to request salary slip if not validated yet
             return (
                 "Your requested amount exceeds your pre-approved limit.\n"
                 "⚠️ To proceed further, we need your salary slip.\n"
