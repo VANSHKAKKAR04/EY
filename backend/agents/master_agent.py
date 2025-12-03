@@ -36,17 +36,39 @@ class MasterAgent:
         # 1️⃣ GREETING
         # --------------------------------------------------------------
         if stage == "greeting":
-            self.state["stage"] = "sales"
-            return {
-                "response": "👋 Hello! I’m your Tata Capital AI Assistant.\nWould you like to apply for a personal loan today?",
-                "stage": "sales",
-                "awaitingSalarySlip": False,
-            }
+            # Check if user confirms they want to proceed
+            msg_lower = msg.lower()
+            if any(word in msg_lower for word in ["yes", "yeah", "sure", "ok", "okay", "i need", "apply", "loan", "interested"]):
+                self.state["stage"] = "sales"
+                # Initialize SalesAgent stage to ask_amount to skip the greeting
+                self.sales.stage = "ask_amount"
+                return {
+                    "response": "Great! Let's begin your loan application.\nPlease tell me how much loan amount you are looking for.",
+                    "stage": "sales",
+                    "awaitingSalarySlip": False,
+                }
+            elif any(word in msg_lower for word in ["no", "nope", "not interested", "don't want"]):
+                return {
+                    "response": "I understand. Feel free to reach out anytime you're interested in applying for a loan. Have a great day! 👋",
+                    "stage": "greeting",
+                    "awaitingSalarySlip": False,
+                }
+            else:
+                # Neutrally acknowledge and ask again
+                return {
+                    "response": "👋 Hello! I'm your Tata Capital AI Assistant.\nWould you like to apply for a personal loan today? (Yes/No)",
+                    "stage": "greeting",
+                    "awaitingSalarySlip": False,
+                }
 
         # --------------------------------------------------------------
         # 2️⃣ SALES STAGE
         # --------------------------------------------------------------
         elif stage == "sales":
+            # Ensure SalesAgent is in correct stage (skip initial "start" greeting)
+            if self.sales.stage == "start":
+                self.sales.stage = "ask_amount"
+            
             response, next_stage = self.sales.handle_sales(msg)
 
             self.state["customer_name"] = self.sales.context.get("name")
