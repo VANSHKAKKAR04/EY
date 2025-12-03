@@ -108,10 +108,29 @@ class MasterAgent:
             if kyc_complete:
                 self.state["verified_customer"] = verified_record
                 self.state["stage"] = "underwriting"
+                
+                # ✅ Auto-trigger underwriting immediately
+                c = verified_record
+                amount = self.state["loan_amount"] or 0
+                tenure = self.state["tenure"] or 0
+
+                # Evaluate loan automatically
+                response_eval, next_stage = self.underwrite.evaluate_loan(
+                    c,
+                    requested_amount=amount,
+                    interest_rate=12.0,
+                    tenure_years=tenure,
+                )
+
+                if next_stage:
+                    self.state["stage"] = next_stage
+
+                awaiting_slip = next_stage == "salary_slip"
+
                 return {
-                    "response": response,
-                    "stage": "underwriting",
-                    "awaitingSalarySlip": False,
+                    "response": response + "\n\n" + response_eval,
+                    "stage": next_stage,
+                    "awaitingSalarySlip": awaiting_slip,
                 }
 
             return {
@@ -188,7 +207,7 @@ class MasterAgent:
             }
 
         # --------------------------------------------------------------
-        # 6️⃣ SANCTION LETTER
+        # 6️⃣ SANCTION LETTER — Auto-generate without user input
         # --------------------------------------------------------------
         elif stage == "sanction":
             c = self.state["verified_customer"]
@@ -197,13 +216,19 @@ class MasterAgent:
 
             amount = self.state["loan_amount"] or 0
             tenure = self.state["tenure"] or 0
+            
+            # Calculate dynamic interest rate based on loan purpose and credit score
+            loan_purpose = self.sales.context.get("purpose", "personal")
+            credit_score = c.get("credit_score", 750)
+            interest_rate = self.sales.get_interest_rate(loan_purpose, credit_score)
 
             loan_data = {
                 "name": c["name"],
                 "approved_amount": amount,
-                "interest_rate": 10.5,
+                "interest_rate": interest_rate,
                 "tenure": tenure,
                 "age": c.get("age", 30),
+                "purpose": loan_purpose,
             }
 
             message, filename = self.sanction.generate_letter(loan_data)
@@ -211,7 +236,7 @@ class MasterAgent:
 
             return {
                 "response": message
-                + f"\n\n💰 Loan Amount: ₹{amount:,}\n"
+                + f"\n\n💰 Loan Amount: ₹{amount:,} | Interest Rate: {interest_rate}%\n"
                 + "✅ Your sanction letter is ready!",
                 "stage": "complete",
                 "awaitingSalarySlip": False,
@@ -247,13 +272,31 @@ class MasterAgent:
 
         if slip_accepted:
             self.state["verified_customer"] = updated_record
-            self.state["salary_slip_uploaded"] = True     # <--- KEY FIX
+            self.state["salary_slip_uploaded"] = True
             self.state["stage"] = "underwriting"
 
+            # ✅ Auto-trigger underwriting immediately after salary slip validation
+            c = updated_record
+            amount = self.state["loan_amount"] or 0
+            tenure = self.state["tenure"] or 0
+
+            # Evaluate loan automatically with salary slip now available
+            response_eval, next_stage = self.underwrite.evaluate_loan(
+                c,
+                requested_amount=amount,
+                interest_rate=12.0,
+                tenure_years=tenure,
+            )
+
+            if next_stage:
+                self.state["stage"] = next_stage
+
+            awaiting_slip = next_stage == "salary_slip"
+
             return {
-                "response": "📄 Salary slip uploaded successfully!\nRe-evaluating your profile...",
-                "stage": "underwriting",
-                "awaitingSalarySlip": False,
+                "response": response + "\n\n" + response_eval,
+                "stage": next_stage,
+                "awaitingSalarySlip": awaiting_slip,
             }
 
         return {

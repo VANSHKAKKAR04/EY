@@ -16,7 +16,8 @@ class SanctionAgent:
                 "name": str,
                 "approved_amount": float,
                 "interest_rate": float,
-                "tenure": int
+                "tenure": int,
+                "purpose": str (optional)
             }
         Returns a tuple: (message:str, file:str)
         """
@@ -38,6 +39,7 @@ class SanctionAgent:
         approved_amount = loan_data.get("approved_amount", customer.get("preapproved_limit", 0))
         rate = loan_data.get("interest_rate", 10.5)
         tenure = loan_data.get("tenure", 3)
+        loan_purpose = loan_data.get("purpose", "Personal Loan")
 
         # Compute EMI and Generate PDF
         # Guard against invalid tenures
@@ -54,6 +56,7 @@ class SanctionAgent:
 
         message = (
             f"✅ Loan sanctioned for {name}!\n"
+            f"Loan Purpose: {loan_purpose}\n"
             f"Amount: ₹{approved_amount:,.2f} | Interest: {rate:.2f}% | Tenure: {tenure} years | EMI: ₹{emi:,.2f}\n"
             f"Credit Score: {credit_score if credit_score is not None else 'Not available'}\n\n"
             f"📄 Your sanction letter is ready!"
