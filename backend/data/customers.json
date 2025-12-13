@@ -4998,5 +4998,41 @@
     "salary": 43413,
     "preapproved_limit": 800000,
     "existing_loans": 1
+  },
+  {
+    "id": 501,
+    "name": "Alice Example",
+    "age": 30,
+    "city": "City",
+    "phone": "1234567890",
+    "salary": 75000,
+    "preapproved_limit": 400000,
+    "existing_loans": 0,
+    "email": "alice@example.com",
+    "password_hash": "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b"
+  },
+  {
+    "id": 502,
+    "name": "VANSH KAKKAR",
+    "age": 23,
+    "city": "Delhi",
+    "phone": "08130806079",
+    "salary": 560000,
+    "preapproved_limit": 800000,
+    "existing_loans": 0,
+    "email": "vanshkakkar04@gmail.com",
+    "password_hash": "b8c861fe6b3952a189d92656ca96e05925d2568a7995c9016f6eebef5364f5b0"
+  },
+  {
+    "id": 503,
+    "name": "Anmol Kakkar",
+    "age": 22,
+    "city": "Delhi",
+    "phone": "9654211030",
+    "salary": 56000,
+    "preapproved_limit": 400000,
+    "existing_loans": 0,
+    "email": "anmolkakkar04@gmail.com",
+    "password_hash": "82d9481ce5ab0947b78f8e8413b403cacc15e9650ab2944952806f1bedb96885"
   }
 ]

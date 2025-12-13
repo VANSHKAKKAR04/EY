@@ -18,6 +18,8 @@ class MasterAgent:
         self.underwrite = UnderwritingAgent()
         self.sanction = SanctionAgent()
 
+        self.user_profile = None
+
         self.state = {
             "stage": "greeting",
             "customer_name": None,
@@ -28,7 +30,8 @@ class MasterAgent:
         }
 
     # =================================================================
-    def handle_message(self, msg: str):
+    def handle_message(self, msg: str, user_profile: dict = None):
+        self.user_profile = user_profile
         stage = self.state["stage"]
         print(f"\n[DEBUG] MasterAgent handling stage='{stage}' | message='{msg}'")
 
@@ -38,6 +41,17 @@ class MasterAgent:
         if stage == "greeting":
             # Check if user confirms they want to proceed
             msg_lower = msg.lower()
+            # If a logged-in profile is provided, personalize and start sales
+            if user_profile:
+                name = user_profile.get("name") or "there"
+                self.state["stage"] = "sales"
+                self.sales.stage = "ask_amount"
+                self.sales.context["name"] = name
+                return {
+                    "response": f"Hi {name}! I see you're logged in. Let's begin your loan application.\nPlease tell me how much loan amount you are looking for.",
+                    "stage": "sales",
+                    "awaitingSalarySlip": False,
+                }
             if any(word in msg_lower for word in ["yes", "yeah", "sure", "ok", "okay", "i need", "apply", "loan", "interested"]):
                 self.state["stage"] = "sales"
                 # Initialize SalesAgent stage to ask_amount to skip the greeting
@@ -88,7 +102,10 @@ class MasterAgent:
         # 3️⃣ KYC START
         # --------------------------------------------------------------
         elif stage == "kyc":
-            response = self.verify.start_kyc()
+            if self.user_profile:
+                response = self.verify.start_kyc_for_profile(self.user_profile)
+            else:
+                response = self.verify.start_kyc()
             self.state["stage"] = "kyc_collect"
             return {
                 "response": response,
@@ -218,7 +235,7 @@ class MasterAgent:
             tenure = self.state["tenure"] or 0
             
             # Calculate dynamic interest rate based on loan purpose and credit score
-            loan_purpose = self.sales.context.get("purpose", "personal")
+            loan_purpose = self.sales.context.get("purpose") or "personal"
             credit_score = c.get("credit_score", 750)
             interest_rate = self.sales.get_interest_rate(loan_purpose, credit_score)
 

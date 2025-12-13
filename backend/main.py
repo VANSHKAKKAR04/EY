@@ -29,8 +29,10 @@ SANCTION_DIR.mkdir(exist_ok=True)
 async def handle_chat(request: Request):
     data = await request.json()
     msg = data.get("message", "")
+    customer = data.get("customer")
 
-    response = master_agent.handle_message(msg)
+    # pass optional customer profile to master agent for personalization
+    response = master_agent.handle_message(msg, user_profile=customer)
 
     # Ensure consistent keys for frontend
     if isinstance(response, dict):

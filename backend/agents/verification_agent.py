@@ -37,11 +37,51 @@ class VerificationAgent:
         self.reset()
         return "To begin the KYC process, please enter your full legal name."
 
+
+    def start_kyc_for_profile(self, profile: dict):
+        """Begin a lightweight verification flow for a logged-in profile.
+
+        Returns a prompt asking the user to confirm the displayed profile fields.
+        """
+        self.reset()
+        # store provided profile as the record to verify
+        self.temp_data["record"] = profile
+        self.temp_data["name"] = profile.get("name")
+        self.step = "awaiting_profile_confirm"
+
+        # prepare a short summary for confirmation
+        parts = [
+            f"Name: {profile.get('name', '')}",
+            f"Age: {profile.get('age', '')}",
+            f"City: {profile.get('city', '')}",
+            f"Phone: {profile.get('phone', '')}",
+            f"Salary: {profile.get('salary', '')}",
+        ]
+        summary = " | ".join(parts)
+        return f"I have the following details for you: {summary}. Are these correct? (Yes/No)"
+
     # ------------------------------------------------------------------
     # MAIN INPUT HANDLER
     # ------------------------------------------------------------------
     def handle_kyc_input(self, msg: str):
         msg = msg.strip()
+
+        # ---------------- PROFILE CONFIRMATION ------------------
+        if self.step == "awaiting_profile_confirm":
+            low = msg.lower()
+            if any(w in low for w in ["yes", "y", "correct", "confirm"]):
+                # accept profile as verified
+                record = self.temp_data["record"]
+                # ensure credit score present
+                if "credit_score" not in record or record["credit_score"] is None:
+                    record["credit_score"] = get_credit_score(record.get("name", ""))
+
+                    self.step = "kyc_complete"
+                    return "All set — your profile is verified ✔️\nProceeding with the application."
+            else:
+                # user wants to correct details → start normal KYC
+                self.reset()
+                return "Okay — let's re-verify. Please enter your full legal name."
 
         # ---------------- STEP 1 — Name ------------------
         if self.step == "awaiting_name":
