@@ -5572,9 +5572,9 @@
     "phone": "8130806079",
     "salary": 56000,
     "preapproved_limit": 400000,
-    "existing_loans": 1,
+    "existing_loans": 2,
     "email": "rk04@gmail.com",
     "password_hash": "a2de29303d42eab45af3585f21ef07cbbdfee2c27f3622759846e901fff10557",
-    "credit_score": 775
+    "credit_score": 750
   }
 ]

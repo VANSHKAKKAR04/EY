@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Send,
   Upload,
@@ -8,8 +8,10 @@ import {
   Download,
 } from "lucide-react";
 import { sendMessage, uploadSalarySlip } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 export default function ChatWindow() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -22,6 +24,13 @@ export default function ChatWindow() {
   const [awaitingSalarySlip, setAwaitingSalarySlip] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    const customer = localStorage.getItem("customer");
+    if (!customer) {
+      navigate("/login");
+    }
+  }, [navigate]);
 
   // -----------------------------------------------------------
   // SEND MESSAGE TO BACKEND
