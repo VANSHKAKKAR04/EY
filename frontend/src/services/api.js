@@ -46,3 +46,11 @@ export async function login(payload) {
   if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
   return data;
 }
+
+// -----------------
+// Offer Mart endpoints (runs on 8002)
+// -----------------
+export async function getUserLoans(userId) {
+  const res = await fetch(`http://localhost:8002/user/${userId}/loans`);
+  return res.json();
+}

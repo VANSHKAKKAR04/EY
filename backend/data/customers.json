@@ -5546,10 +5546,10 @@
     "phone": "9654211030",
     "salary": 56000,
     "preapproved_limit": 400000,
-    "existing_loans": 0,
+    "existing_loans": 1,
     "email": "vikaskakkar04@gmail.com",
     "password_hash": "60172e0e3b37765b24cb14a3baaeb1b189ce24ea32b1b9654f3fcae9bd0d756a",
-    "credit_score": 800
+    "credit_score": 775
   },
   {
     "id": 505,
@@ -5559,10 +5559,10 @@
     "phone": "8130806079",
     "salary": 56000,
     "preapproved_limit": 400000,
-    "existing_loans": 0,
+    "existing_loans": 2,
     "email": "ritukakkar04@gmail.com",
     "password_hash": "8fbcec40735339110fa8af074c696976b80fcb7cd31eea4ed650ebb4d58717ca",
-    "credit_score": 800
+    "credit_score": 775
   },
   {
     "id": 506,
@@ -5572,9 +5572,22 @@
     "phone": "8130806079",
     "salary": 56000,
     "preapproved_limit": 400000,
-    "existing_loans": 2,
+    "existing_loans": 3,
     "email": "rk04@gmail.com",
     "password_hash": "a2de29303d42eab45af3585f21ef07cbbdfee2c27f3622759846e901fff10557",
+    "credit_score": 725
+  },
+  {
+    "id": 507,
+    "name": "Lionel Messi",
+    "age": 24,
+    "city": "Delhi",
+    "phone": "8130806079",
+    "salary": 56000,
+    "preapproved_limit": 400000,
+    "existing_loans": 2,
+    "email": "lm04@gmail.com",
+    "password_hash": "de899d5d73657b6b4e8ae32ca1d2ca3d75c10167d4faad3a0558cd148345be3a",
     "credit_score": 750
   }
 ]

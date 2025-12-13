@@ -2,6 +2,8 @@ from utils.pdf_generator import generate_sanction_pdf, calculate_emi
 from services.crm_api import get_customer_kyc
 from services.credit_api import get_credit_score
 from pathlib import Path
+import json
+import requests
 
 class SanctionAgent:
     def __init__(self):
@@ -62,5 +64,29 @@ class SanctionAgent:
             f"📄 Your sanction letter is ready!"
         )
 
+        # Save loan to offers.json via offer_mart_server
+        self.save_loan_to_offers(customer["id"], {
+            "name": f"{loan_purpose} Loan",
+            "type": loan_purpose.lower(),
+            "amount": approved_amount,
+            "interest_rate": rate,
+            "tenure_months": tenure * 12,
+            "status": "sanctioned",
+            "sanction_letter_path": str(path_obj),
+            "purpose": loan_purpose,
+            "emi": emi
+        })
+
         # Return both message and file name for frontend download
         return message, path_obj.name
+
+    def save_loan_to_offers(self, user_id: int, loan: dict):
+        """Save the loan to offers.json via POST to offer_mart_server."""
+        try:
+            response = requests.post(f"http://localhost:8002/user/{user_id}/loans", json=loan)
+            if response.status_code == 200:
+                print(f"Loan saved for user {user_id}")
+            else:
+                print(f"Failed to save loan for user {user_id}: {response.text}")
+        except Exception as e:
+            print(f"Error saving loan: {e}")
