@@ -2,6 +2,7 @@ from agents.sales_agent import SalesAgent
 from agents.verification_agent import VerificationAgent
 from agents.underwriting_agent import UnderwritingAgent
 from agents.sanction_agent import SanctionAgent
+from services.crm_api import update_customer_loans
 
 
 class MasterAgent:
@@ -250,6 +251,9 @@ class MasterAgent:
 
             message, filename = self.sanction.generate_letter(loan_data)
             self.state["stage"] = "complete"
+
+            # Update customer's existing loans and credit score
+            update_customer_loans(c["id"])
 
             return {
                 "response": message

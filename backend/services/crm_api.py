@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from services.credit_api import get_credit_score
+from services.credit_api import get_credit_score, calculate_credit_score
 
 # Path to CRM database
 CUSTOMERS_PATH = Path(__file__).resolve().parent.parent / "data" / "customers.json"
@@ -123,6 +123,8 @@ def sign_up(name: str, age: int, city: str, phone: str, salary: int, email: str,
         "password_hash": pw_hash,
     }
 
+    new_customer["credit_score"] = calculate_credit_score(new_customer)
+
     customers.append(new_customer)
     _save_customers(customers)
 
@@ -148,3 +150,18 @@ def authenticate(email: str, password: str) -> dict:
             return None
 
     return None
+
+
+# ──────────────────────────────────────────────────────────
+# 5. UPDATE CUSTOMER LOANS
+# ──────────────────────────────────────────────────────────
+def update_customer_loans(cid: int):
+    """Increment existing_loans for a customer and update credit_score."""
+    customers = _load_customers()
+    for c in customers:
+        if c["id"] == cid:
+            c["existing_loans"] += 1
+            c["credit_score"] = calculate_credit_score(c)
+            _save_customers(customers)
+            return True
+    return False

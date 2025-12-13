@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from agents.master_agent import MasterAgent
 import shutil
 from pathlib import Path
+from services.crm_api import get_customer_by_id
 
 app = FastAPI()
 
@@ -51,8 +52,20 @@ async def handle_chat(request: Request):
     }
 
 
+# ============================================================# 🟪 GET CUSTOMER PROFILE ENDPOINT
 # ============================================================
-# 🟩 SALARY SLIP UPLOAD ENDPOINT
+@app.get("/profile/{customer_id}")
+async def get_customer_profile(customer_id: int):
+    customer = get_customer_by_id(customer_id)
+    if customer:
+        # Remove sensitive fields
+        safe = dict(customer)
+        safe.pop("password_hash", None)
+        return safe
+    return {"error": "Customer not found"}
+
+
+# ============================================================# 🟩 SALARY SLIP UPLOAD ENDPOINT
 # ============================================================
 @app.post("/upload-salary-slip")
 async def upload_salary_slip(file: UploadFile = File(...)):

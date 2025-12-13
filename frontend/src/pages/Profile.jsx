@@ -1,15 +1,52 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const raw = localStorage.getItem("customer");
-  const customer = raw ? JSON.parse(raw) : null;
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("customer");
+    const storedCustomer = raw ? JSON.parse(raw) : null;
+
+    if (!storedCustomer) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch updated profile from backend
+    fetch(`http://localhost:8000/profile/${storedCustomer.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          console.error(data.error);
+          setCustomer(storedCustomer); // fallback to stored
+        } else {
+          setCustomer(data);
+          // Update localStorage with fresh data
+          localStorage.setItem("customer", JSON.stringify(data));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch profile:", err);
+        setCustomer(storedCustomer); // fallback
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("customer");
     navigate("/");
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Loading profile...</div>
+      </div>
+    );
+  }
 
   if (!customer) {
     return (
@@ -60,6 +97,10 @@ export default function Profile() {
           <div>
             <strong>Existing loans</strong>
             <div>{customer.existing_loans}</div>
+          </div>
+          <div>
+            <strong>Credit score</strong>
+            <div>{customer.credit_score}</div>
           </div>
         </div>
 
