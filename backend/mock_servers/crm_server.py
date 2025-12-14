@@ -28,6 +28,8 @@ class SignUpIn(BaseModel):
     salary: int
     email: str
     password: str
+    pan_number: str
+    aadhaar_number: str
 
 
 class LoginIn(BaseModel):
@@ -59,6 +61,8 @@ def signup_endpoint(payload: SignUpIn):
             salary=payload.salary,
             email=payload.email,
             password=payload.password,
+            pan_number=payload.pan_number,
+            aadhaar_number=payload.aadhaar_number,
         )
         return {"success": True, "customer": created}
     except ValueError as e:

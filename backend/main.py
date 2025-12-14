@@ -89,6 +89,88 @@ async def upload_salary_slip(file: UploadFile = File(...)):
 
 
 # ============================================================
+# 🟥 PAN CARD UPLOAD ENDPOINT
+# ============================================================
+@app.post("/upload-pan")
+async def upload_pan_card(customer_id: int, file: UploadFile = File(...)):
+    from services.ocr_utils import validate_pan_card
+    from services.crm_api import get_customer_by_id
+
+    customer = get_customer_by_id(customer_id)
+    if not customer:
+        return {"error": "Customer not found"}
+
+    # Save file
+    file_path = UPLOAD_DIR / file.filename
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    print(f"[DEBUG] PAN card uploaded: {file_path}")
+
+    # Validate PAN card
+    result = validate_pan_card(customer["name"], customer["pan_number"], file_path)
+
+    if result["status"] == "success":
+        return {
+            "message": result["message"] + "\n\n📄 Please upload your Aadhaar card for validation.",
+            "stage": "kyc_collect",
+            "awaitingPan": False,
+            "awaitingAadhaar": True,
+            "awaitingSalarySlip": False,
+        }
+    else:
+        return {
+            "message": result["message"],
+            "stage": "kyc_collect",
+            "awaitingPan": True,
+            "awaitingAadhaar": False,
+            "awaitingSalarySlip": False,
+        }
+
+
+# ============================================================
+# 🟧 AADHAAR CARD UPLOAD ENDPOINT
+# ============================================================
+@app.post("/upload-aadhaar")
+async def upload_aadhaar_card(customer_id: int, file: UploadFile = File(...)):
+    from services.ocr_utils import validate_aadhaar_card
+    from services.crm_api import get_customer_by_id
+
+    customer = get_customer_by_id(customer_id)
+    if not customer:
+        return {"error": "Customer not found"}
+
+    # Save file
+    file_path = UPLOAD_DIR / file.filename
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    print(f"[DEBUG] Aadhaar card uploaded: {file_path}")
+
+    # Validate Aadhaar card
+    result = validate_aadhaar_card(customer["name"], customer["aadhaar_number"], file_path)
+
+    if result["status"] == "success":
+        # KYC complete, go to underwriting
+        underwriting_message = "🎉 KYC Completed Successfully!\n\nProceeding with loan evaluation..."
+        return {
+            "message": result["message"] + "\n\n" + underwriting_message,
+            "stage": "underwriting",
+            "awaitingPan": False,
+            "awaitingAadhaar": False,
+            "awaitingSalarySlip": False,  # Assuming no salary slip needed
+        }
+    else:
+        return {
+            "message": result["message"],
+            "stage": "kyc_collect",
+            "awaitingPan": False,
+            "awaitingAadhaar": True,
+            "awaitingSalarySlip": False,
+        }
+
+
+# ============================================================
 # 🟨 DOWNLOAD SANCTION LETTER ENDPOINT
 # ============================================================
 @app.get("/download-sanction/{filename}")

@@ -89,7 +89,7 @@ def _compute_preapproved_limit(salary: int) -> int:
     return 800000
 
 
-def sign_up(name: str, age: int, city: str, phone: str, salary: int, email: str, password: str) -> dict:
+def sign_up(name: str, age: int, city: str, phone: str, salary: int, email: str, password: str, pan_number: str, aadhaar_number: str) -> dict:
     """Register a new customer and persist to `customers.json`.
 
     - assigns a unique `id` (starts from 501)
@@ -121,6 +121,8 @@ def sign_up(name: str, age: int, city: str, phone: str, salary: int, email: str,
         "existing_loans": 0,
         "email": email,
         "password_hash": pw_hash,
+        "pan_number": pan_number,
+        "aadhaar_number": aadhaar_number,
     }
 
     new_customer["credit_score"] = calculate_credit_score(new_customer)

@@ -13,6 +13,30 @@
         "sanction_letter_path": "sanctions\\sanction_RITU_KAKKAR.pdf",
         "purpose": "education",
         "emi": 9366.35
+      },
+      {
+        "name": "wedding Loan",
+        "type": "wedding",
+        "amount": 500000.0,
+        "interest_rate": 10.25,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_RITU_KAKKAR.pdf",
+        "purpose": "wedding",
+        "emi": 12741.40654253382,
+        "id": "505_2"
+      },
+      {
+        "name": "business Loan",
+        "type": "business",
+        "amount": 445000.0,
+        "interest_rate": 10.5,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_RITU_KAKKAR.pdf",
+        "purpose": "business",
+        "emi": 11393.50398959726,
+        "id": "505_3"
       }
     ]
   },

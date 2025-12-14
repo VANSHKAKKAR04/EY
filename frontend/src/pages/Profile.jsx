@@ -115,8 +115,12 @@ export default function Profile() {
             <div>{customer.existing_loans}</div>
           </div>
           <div>
-            <strong>Credit score</strong>
-            <div>{customer.credit_score}</div>
+            <strong>PAN Number</strong>
+            <div>{customer.pan_number}</div>
+          </div>
+          <div>
+            <strong>Aadhaar Number</strong>
+            <div>{customer.aadhaar_number}</div>
           </div>
         </div>
 

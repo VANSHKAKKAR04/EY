@@ -11,6 +11,8 @@ export default function Signup() {
     salary: "",
     email: "",
     password: "",
+    pan_number: "",
+    aadhaar_number: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -32,6 +34,8 @@ export default function Signup() {
         salary: Number(form.salary),
         email: form.email,
         password: form.password,
+        pan_number: form.pan_number,
+        aadhaar_number: form.aadhaar_number,
       };
       const res = await signup(payload);
       // store customer locally
@@ -99,6 +103,20 @@ export default function Signup() {
             placeholder="Password"
             type="password"
             value={form.password}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+          <input
+            name="pan_number"
+            placeholder="PAN Number"
+            value={form.pan_number}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+          <input
+            name="aadhaar_number"
+            placeholder="Aadhaar Number"
+            value={form.aadhaar_number}
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />

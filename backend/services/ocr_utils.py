@@ -6,26 +6,44 @@ from pdf2image import convert_from_path
 from pathlib import Path
 from services.crm_api import get_customer_kyc
 
+# ✅ FORCE POPPLER PATH (Windows)
+POPPLER_PATH = r"C:\poppler\poppler-23.08.0\Library\bin"
+
+
 def extract_text_from_image(image_path: Path) -> str:
     img = Image.open(image_path)
     return pytesseract.image_to_string(img)
 
+
 def extract_text_from_pdf(pdf_path: Path) -> str:
-    pages = convert_from_path(pdf_path, dpi=300)
+    pages = convert_from_path(
+        pdf_path,
+        dpi=300,
+        poppler_path=POPPLER_PATH
+    )
+    # Read only first page (salary slip / PAN usually first page)
     return pytesseract.image_to_string(pages[0])
+
 
 def extract_salary_from_text(text: str) -> float:
     text = text.replace(",", "")
-    matches = re.findall(r"(?:₹|Rs\.?|INR)?\s?(\d{4,7})", text, re.IGNORECASE)
+    matches = re.findall(
+        r"(?:₹|Rs\.?|INR)?\s?(\d{4,7})",
+        text,
+        re.IGNORECASE
+    )
     if not matches:
         return 0.0
     return float(max(map(int, matches)))
 
+
 def extract_salary_from_slip(file_path: Path) -> tuple[float, str]:
     """Return salary extracted from the slip and a short status message."""
-    if file_path.suffix.lower() in [".jpg", ".jpeg", ".png"]:
+    suffix = file_path.suffix.lower()
+
+    if suffix in [".jpg", ".jpeg", ".png"]:
         text = extract_text_from_image(file_path)
-    elif file_path.suffix.lower() == ".pdf":
+    elif suffix == ".pdf":
         text = extract_text_from_pdf(file_path)
     else:
         return 0.0, "❌ Unsupported file format."
@@ -33,7 +51,9 @@ def extract_salary_from_slip(file_path: Path) -> tuple[float, str]:
     salary = extract_salary_from_text(text)
     if salary == 0:
         return 0.0, "⚠ No salary amount detected on slip."
+
     return salary, f"✅ Extracted salary ₹{salary:,.0f}"
+
 
 def validate_salary_slip(customer_name: str, file_path: Path) -> dict:
     """Full end-to-end validation comparing OCR salary with CRM salary."""
@@ -43,12 +63,13 @@ def validate_salary_slip(customer_name: str, file_path: Path) -> dict:
 
     # Handle list vs dict
     if isinstance(cust, list):
-        cust = cust[0]  # pick first record
+        cust = cust[0]
     elif not isinstance(cust, dict):
         return {"status": "error", "message": "Invalid customer data format."}
 
     salary, msg = extract_salary_from_slip(file_path)
     registered_salary = cust.get("salary", 0)
+
     print(f"[DEBUG] OCR Extracted Salary: {salary}")
     print(f"[DEBUG] CRM Registered Salary: {registered_salary}")
 
@@ -56,9 +77,93 @@ def validate_salary_slip(customer_name: str, file_path: Path) -> dict:
         return {"status": "error", "message": msg}
 
     if abs(salary - registered_salary) <= 1000:
-        return {"status": "success", "message": f"✅ Salary slip verified successfully for {customer_name}."}
-    else:
+        return {
+            "status": "success",
+            "message": f"✅ Salary slip verified successfully for {customer_name}."
+        }
+
+    return {
+        "status": "error",
+        "message": f"❌ Salary mismatch. OCR: ₹{salary}, Registered: ₹{registered_salary}."
+    }
+
+
+def extract_pan_from_text(text: str) -> str:
+    """Extract PAN number from text (format: AAAAA9999A)."""
+    match = re.search(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b", text)
+    return match.group(1) if match else ""
+
+
+def extract_aadhaar_from_text(text: str) -> str:
+    """Extract Aadhaar number from text (12 digits)."""
+    match = re.search(r"\b(\d{4}\s?\d{4}\s?\d{4})\b", text)
+    return match.group(1).replace(" ", "") if match else ""
+
+
+def extract_name_from_text(text: str) -> str:
+    """Extract name from text (simple heuristic)."""
+    lines = text.split("\n")
+    for line in lines:
+        line = line.strip()
+        if len(line.split()) >= 2 and not any(char.isdigit() for char in line):
+            return line.title()
+    return ""
+
+
+def extract_from_card(file_path: Path) -> str:
+    """Extract text from image or PDF."""
+    suffix = file_path.suffix.lower()
+
+    if suffix in [".jpg", ".jpeg", ".png"]:
+        return extract_text_from_image(file_path)
+    elif suffix == ".pdf":
+        return extract_text_from_pdf(file_path)
+
+    return ""
+
+
+def validate_pan_card(customer_name: str, pan_number: str, file_path: Path) -> dict:
+    """Validate PAN card: extract PAN, compare with customer data."""
+    text = extract_from_card(file_path)
+    if not text:
+        return {"status": "error", "message": "Could not extract text from PAN card."}
+
+    extracted_pan = extract_pan_from_text(text)
+
+    if not extracted_pan:
+        return {"status": "error", "message": "PAN number not found on card."}
+
+    if extracted_pan != pan_number:
         return {
             "status": "mismatch",
-            "message": f"⚠ Salary slip shows ₹{salary:,.0f}, but CRM has ₹{registered_salary:,.0f}. Verification required."
+            "message": f"PAN mismatch: Card has {extracted_pan}, CRM has {pan_number}."
         }
+
+    return {"status": "success", "message": "PAN card verified successfully."}
+
+
+def validate_aadhaar_card(customer_name: str, aadhaar_number: str, file_path: Path) -> dict:
+    """Validate Aadhaar card: extract name and Aadhaar, compare with customer data."""
+    text = extract_from_card(file_path)
+    if not text:
+        return {"status": "error", "message": "Could not extract text from Aadhaar card."}
+
+    extracted_aadhaar = extract_aadhaar_from_text(text)
+    extracted_name = extract_name_from_text(text)
+
+    if not extracted_aadhaar:
+        return {"status": "error", "message": "Aadhaar number not found on card."}
+
+    if extracted_aadhaar != aadhaar_number:
+        return {
+            "status": "mismatch",
+            "message": f"Aadhaar mismatch: Card has {extracted_aadhaar}, CRM has {aadhaar_number}."
+        }
+
+    if extracted_name.lower() != customer_name.lower():
+        return {
+            "status": "mismatch",
+            "message": f"Name mismatch: Card has '{extracted_name}', CRM has '{customer_name}'."
+        }
+
+    return {"status": "success", "message": "Aadhaar card verified successfully."}

@@ -22,6 +22,40 @@ export async function uploadSalarySlip(file) {
   return res.json();
 }
 
+export async function uploadPan(file) {
+  const raw =
+    typeof window !== "undefined" ? localStorage.getItem("customer") : null;
+  const customer = raw ? JSON.parse(raw) : undefined;
+  const customerId = customer ? customer.id : null;
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(
+    `http://localhost:8000/upload-pan?customer_id=${customerId}`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+  return res.json();
+}
+
+export async function uploadAadhaar(file) {
+  const raw =
+    typeof window !== "undefined" ? localStorage.getItem("customer") : null;
+  const customer = raw ? JSON.parse(raw) : undefined;
+  const customerId = customer ? customer.id : null;
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(
+    `http://localhost:8000/upload-aadhaar?customer_id=${customerId}`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+  return res.json();
+}
+
 // -----------------
 // Auth endpoints (CRM mock server runs on 8001)
 // -----------------

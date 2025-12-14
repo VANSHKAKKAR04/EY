@@ -265,7 +265,7 @@ export default function Navbar() {
                 >
                   {isLoggedIn ? (
                     <>
-                      <a
+                      {/* <a
                         href="/dashboard"
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700 border-b border-slate-100"
                       >
@@ -276,19 +276,19 @@ export default function Navbar() {
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700 border-b border-slate-100"
                       >
                         My Loans
-                      </a>
+                      </a> */}
                       <a
                         href="/profile"
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700 border-b border-slate-100"
                       >
                         Profile Settings
                       </a>
-                      <a
+                      {/* <a
                         href="/documents"
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700 border-b border-slate-100"
                       >
                         Documents
-                      </a>
+                      </a> */}
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700"
