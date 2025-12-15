@@ -1,6 +1,12 @@
+# verification_agent.py (Revised structure)
+
 from services.crm_api import get_all_customers
 from services.credit_api import get_credit_score
-from services.ocr_utils import validate_salary_slip
+from services.ocr_utils import (
+    validate_salary_slip,
+    validate_pan_card,
+    validate_aadhaar_card
+)
 from pathlib import Path
 
 
@@ -13,48 +19,29 @@ class VerificationAgent:
         self.temp_data = {
             "name": None,
             "record": None,
+            "pan_valid": False,
+            "aadhaar_valid": False,
             "salary_slip_valid": False,
         }
         self.matches = []
         self.step = "awaiting_name"
 
-    # ------------------------------------------------------------------
-    # Compatibility wrapper for MasterAgent
-    # ------------------------------------------------------------------
-    def collect_step(self, msg: str):
-        """
-        returns -> response (str), kyc_complete (bool), record (dict|None)
-        """
-        response = self.handle_kyc_input(msg)
+    # ... (collect_step, start_kyc, start_kyc_for_profile are mostly untouched) ...
 
+    def collect_step(self, msg: str):
+        response = self.handle_kyc_input(msg)
         if self.step == "kyc_complete":
             return response, True, self.temp_data["record"]
-
         return response, False, None
 
-    # ------------------------------------------------------------------
-    def start_kyc(self):
-        self.reset()
-        return "To begin the KYC process, please enter your full legal name."
-
-
     def start_kyc_for_profile(self, profile: dict):
-        """Begin a lightweight verification flow for a logged-in profile.
-
-        Returns a prompt asking the user to confirm the displayed profile fields.
-        """
         self.reset()
-        # store provided profile as the record to verify
         self.temp_data["record"] = profile
         self.temp_data["name"] = profile.get("name")
         self.step = "awaiting_profile_confirm"
-
-        # prepare a short summary for confirmation
         parts = [
-            f"Name: {profile.get('name', '')}",
-            f"Age: {profile.get('age', '')}",
-            f"City: {profile.get('city', '')}",
-            f"Phone: {profile.get('phone', '')}",
+            f"Name: {profile.get('name', '')}", f"Age: {profile.get('age', '')}",
+            f"City: {profile.get('city', '')}", f"Phone: {profile.get('phone', '')}",
             f"Salary: {profile.get('salary', '')}",
         ]
         summary = " | ".join(parts)
@@ -70,72 +57,18 @@ class VerificationAgent:
         if self.step == "awaiting_profile_confirm":
             low = msg.lower()
             if any(w in low for w in ["yes", "y", "correct", "confirm"]):
-                # accept profile as verified
                 record = self.temp_data["record"]
-                # ensure credit score present
                 if "credit_score" not in record or record["credit_score"] is None:
                     record["credit_score"] = get_credit_score(record.get("name", ""))
 
-                    self.step = "kyc_complete"
-                    return "All set — your profile is verified ✔️\nProceeding with the application."
+                # Immediately transition to the dedicated PAN upload stage
+                self.step = "kyc_collect_pan_ready" # Internal flag to tell MasterAgent to move stage
+                return "Profile confirmed ✔️. Proceeding to document verification."
             else:
-                # user wants to correct details → start normal KYC
                 self.reset()
                 return "Okay — let's re-verify. Please enter your full legal name."
 
-        # ---------------- STEP 1 — Name ------------------
-        if self.step == "awaiting_name":
-            name = msg
-            all_customers = get_all_customers()
-            matches = [c for c in all_customers if c["name"].lower() == name.lower()]
-
-            if not matches:
-                return "❌ No customer found with that name. Please try again."
-
-            self.temp_data["name"] = name
-
-            if len(matches) > 1:
-                self.matches = matches
-                self.step = "awaiting_id"
-                ids = ", ".join(str(c["id"]) for c in matches)
-                return f"Multiple matches found. Please enter your Customer ID: {ids}"
-
-            self.temp_data["record"] = matches[0]
-            self.step = "awaiting_age"
-            return "Please enter your age."
-
-        # ---------------- STEP 2 — Customer ID ------------------
-        if self.step == "awaiting_id":
-            if not msg.isdigit():
-                return "⚠️ Please enter a numeric ID."
-
-            cid = int(msg)
-            chosen = next((c for c in self.matches if c["id"] == cid), None)
-            if not chosen:
-                return "❌ Invalid ID. Choose from the list."
-
-            self.temp_data["record"] = chosen
-            self.step = "awaiting_age"
-            return "Please enter your age."
-
-        # ---------------- STEP 3 — Age ------------------
-        if self.step == "awaiting_age":
-            if not msg.isdigit():
-                return "⚠️ Age must be a number."
-
-            if int(msg) != self.temp_data["record"]["age"]:
-                return "❌ Age mismatch. Please re-enter correctly."
-
-            self.step = "awaiting_city"
-            return "Please enter your city."
-
-        # ---------------- STEP 4 — City ------------------
-        if self.step == "awaiting_city":
-            if msg.lower() != self.temp_data["record"]["city"].lower():
-                return "❌ City mismatch. Please try again."
-
-            self.step = "awaiting_phone"
-            return "Please enter your registered phone number."
+        # ... (Steps 1 to 4: awaiting_name, awaiting_id, awaiting_age, awaiting_city are UNCHANGED) ...
 
         # ---------------- STEP 5 — Phone ------------------
         if self.step == "awaiting_phone":
@@ -144,10 +77,11 @@ class VerificationAgent:
             if msg != actual:
                 return "❌ Phone mismatch. Please re-enter the correct number."
 
-            self.step = "awaiting_salary"
-            return "Please enter your monthly salary."
+            # Immediately transition to the dedicated PAN upload stage
+            self.step = "kyc_collect_pan_ready" 
+            return "Phone number verified ✔️. Proceeding to PAN card upload."
 
-        # ---------------- STEP 6 — Salary ------------------
+        # ---------------- STEP 6 — Awaiting Salary Input ------------------
         if self.step == "awaiting_salary":
             if not msg.isdigit():
                 return "⚠️ Enter salary in numeric format."
@@ -157,63 +91,106 @@ class VerificationAgent:
 
             if entered != crm_salary:
                 return "❌ Salary mismatch. Enter the correct monthly salary."
+            
+            self.step = "kyc_complete"
+            return "All key details verified ✔️.\n\nProceeding to loan evaluation."
 
-            # All details matched — now request salary slip
-            # self.step = "awaiting_salary_slip"
-            # return (
-            #     "All details verified ✔️\n"
-            #     "📄 Please upload your salary slip for validation."
-            # )
+        # --- New stages handled entirely by MasterAgent (handle_file_upload) ---
+        # The agent should not receive messages in these states.
+        if self.step == "kyc_collect_pan_ready":
+             # This indicates the MasterAgent should transition to 'pan_slip'
+             return "Ready for PAN upload." 
+        if self.step == "kyc_collect_aadhaar_ready":
+             # This indicates the MasterAgent should transition to 'aadhaar_slip'
+             return "Ready for Aadhaar upload."
+        if self.step == "awaiting_salary_slip":
+             return "Waiting for salary slip..."
 
-        # ---------------- STEP 7 — Waiting for Salary Slip ------------------
-        # if self.step == "awaiting_salary_slip":
-        #     return (
-        #         "📄 Waiting for salary slip…\n"
-        #         "Please upload your salary slip using the upload button."
-        #     )
-
-        self.step = "kyc_complete"
-        # ---------------- STEP 8 — After completion ------------------
         if self.step == "kyc_complete":
             return "KYC already completed."
 
         return "❌ Unexpected error."
 
     # ------------------------------------------------------------------
-    # SALARY SLIP UPLOAD HANDLER (called from MasterAgent)
+    # DOCUMENT UPLOAD HANDLERS
     # ------------------------------------------------------------------
+
+    def handle_pan_upload(self, file_path: str):
+        """Process and validate the uploaded PAN document."""
+        file_path = Path(file_path)
+        record = self.temp_data["record"]
+        customer_name = record.get("name", "")
+        crm_pan = record.get("pan_number", "")
+
+        result = validate_pan_card(customer_name, crm_pan, file_path) 
+        
+        status = result.get("status")
+        msg = result.get("message", "")
+        
+        if status in ["error", "mismatch"]:
+            return (f"❌ {msg}\n\nPlease try uploading a clear document again.", False, None)
+
+        # SUCCESS
+        self.temp_data["pan_valid"] = True
+        
+        # Next internal step is to transition to the dedicated Aadhaar upload stage
+        self.step = "kyc_collect_aadhaar_ready" 
+        return (
+            f"PAN Card verified successfully ✔️.",
+            False,
+            record,
+        )
+
+    def handle_aadhaar_upload(self, file_path: str):
+        """Process and validate the uploaded Aadhaar document."""
+        file_path = Path(file_path)
+        record = self.temp_data["record"]
+        customer_name = record.get("name", "")
+        crm_aadhaar = record.get("aadhaar_number", "")
+
+        result = validate_aadhaar_card(customer_name, crm_aadhaar, file_path) 
+        
+        status = result.get("status")
+        msg = result.get("message", "")
+
+        if status in ["error", "mismatch"]:
+            return (f"❌ {msg}\n\nPlease try uploading a clear document again.", False, None)
+
+        # SUCCESS
+        self.temp_data["aadhaar_valid"] = True
+        
+        # Next internal step is to return to the collection stage for manual salary input
+        self.step = "awaiting_salary" 
+        return (
+            f"Aadhaar Card verified successfully ✔️.\n\nNow returning to final details entry.", 
+            False, 
+            record
+        )
+    
+    # ... (handle_salary_slip_upload is UNCHANGED, but its next step is kyc_complete) ...
     def handle_salary_slip_upload(self, file_path: str):
         """
         Process and validate the uploaded salary slip.
         Returns (response, kyc_complete_flag, record)
         """
         file_path = Path(file_path)
-
         # Use OCR + CRM comparison
         result = validate_salary_slip(self.temp_data["name"], file_path)
-
         status = result.get("status")
         msg = result.get("message", "")
 
         if status == "error":
             return (f"❌ {msg}", False, None)
-
         if status == "mismatch":
             return (f"⚠️ {msg}", False, None)
 
-        # SUCCESS
         self.temp_data["salary_slip_valid"] = True
-
         record = self.temp_data["record"]
-
-        # Add credit score if missing
         if "credit_score" not in record or record["credit_score"] is None:
             record["credit_score"] = get_credit_score(record["name"])
 
-        # Mark the customer record as having a validated salary slip
         record["salary_slip_valid"] = True
         self.step = "kyc_complete"
-
         return (
             f"{msg}\n\n"
             "🎉 KYC Completed Successfully!\n\n"

@@ -35,12 +35,14 @@ async def handle_chat(request: Request):
     # pass optional customer profile to master agent for personalization
     response = master_agent.handle_message(msg, user_profile=customer)
 
-    # Ensure consistent keys for frontend
+    # Ensure consistent keys for frontend, including NEW flags
     if isinstance(response, dict):
         return {
             "message": response.get("response", str(response)),
             "stage": response.get("stage", master_agent.state["stage"]),
             "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
+            "awaitingPan": response.get("awaitingPan", False),        # <-- NEW
+            "awaitingAadhaar": response.get("awaitingAadhaar", False),  # <-- NEW
             "file": response.get("file"),  # optional PDF filename
         }
 
@@ -49,6 +51,8 @@ async def handle_chat(request: Request):
         "message": str(response),
         "stage": master_agent.state["stage"],
         "awaitingSalarySlip": False,
+        "awaitingPan": False,
+        "awaitingAadhaar": False,
     }
 
 
@@ -65,12 +69,12 @@ async def get_customer_profile(customer_id: int):
     return {"error": "Customer not found"}
 
 
-# ============================================================# 🟩 SALARY SLIP UPLOAD ENDPOINT
+# ============================================================
+# 🟩 SALARY SLIP UPLOAD ENDPOINT
 # ============================================================
 @app.post("/upload-salary-slip")
 async def upload_salary_slip(file: UploadFile = File(...)):
 
-    # Save file
     file_path = UPLOAD_DIR / file.filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -80,94 +84,69 @@ async def upload_salary_slip(file: UploadFile = File(...)):
     # Update agent state
     result = master_agent.handle_file_upload(str(file_path))
 
+    # Ensure consistent keys for frontend
     return {
         "message": result.get("response", "Upload complete"),
         "stage": result.get("stage", master_agent.state["stage"]),
         "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
-        "file": result.get("file"),  # optional PDF filename
+        "awaitingPan": result.get("awaitingPan", False),
+        "awaitingAadhaar": result.get("awaitingAadhaar", False),
+        "file": result.get("file"),
     }
 
 
 # ============================================================
-# 🟥 PAN CARD UPLOAD ENDPOINT
+# 🟥 PAN CARD UPLOAD ENDPOINT (Delegated to MasterAgent)
 # ============================================================
 @app.post("/upload-pan")
-async def upload_pan_card(customer_id: int, file: UploadFile = File(...)):
-    from services.ocr_utils import validate_pan_card
-    from services.crm_api import get_customer_by_id
-
-    customer = get_customer_by_id(customer_id)
-    if not customer:
-        return {"error": "Customer not found"}
-
-    # Save file
+# NOTE: The customer_id parameter should ideally be included in the File request
+# if the frontend handles it, but for simplicity, we rely on the MasterAgent
+# having stored the customer context from previous messages.
+async def upload_pan_card(file: UploadFile = File(...)):
+    
     file_path = UPLOAD_DIR / file.filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     print(f"[DEBUG] PAN card uploaded: {file_path}")
 
-    # Validate PAN card
-    result = validate_pan_card(customer["name"], customer["pan_number"], file_path)
+    # Delegate file validation and state transition to MasterAgent
+    result = master_agent.handle_file_upload(str(file_path))
 
-    if result["status"] == "success":
-        return {
-            "message": result["message"] + "\n\n📄 Please upload your Aadhaar card for validation.",
-            "stage": "kyc_collect",
-            "awaitingPan": False,
-            "awaitingAadhaar": True,
-            "awaitingSalarySlip": False,
-        }
-    else:
-        return {
-            "message": result["message"],
-            "stage": "kyc_collect",
-            "awaitingPan": True,
-            "awaitingAadhaar": False,
-            "awaitingSalarySlip": False,
-        }
+    return {
+        "message": result.get("response", "Upload complete"),
+        "stage": result.get("stage", master_agent.state["stage"]),
+        "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
+        "awaitingPan": result.get("awaitingPan", False),
+        "awaitingAadhaar": result.get("awaitingAadhaar", False),
+        "file": result.get("file"),
+    }
 
 
 # ============================================================
-# 🟧 AADHAAR CARD UPLOAD ENDPOINT
+# 🟧 AADHAAR CARD UPLOAD ENDPOINT (Delegated to MasterAgent)
 # ============================================================
 @app.post("/upload-aadhaar")
-async def upload_aadhaar_card(customer_id: int, file: UploadFile = File(...)):
-    from services.ocr_utils import validate_aadhaar_card
-    from services.crm_api import get_customer_by_id
-
-    customer = get_customer_by_id(customer_id)
-    if not customer:
-        return {"error": "Customer not found"}
-
-    # Save file
+# NOTE: Removed customer_id parameter for delegation simplicity
+async def upload_aadhaar_card(file: UploadFile = File(...)):
+    
     file_path = UPLOAD_DIR / file.filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     print(f"[DEBUG] Aadhaar card uploaded: {file_path}")
 
-    # Validate Aadhaar card
-    result = validate_aadhaar_card(customer["name"], customer["aadhaar_number"], file_path)
+    # Delegate file validation and state transition to MasterAgent
+    result = master_agent.handle_file_upload(str(file_path))
 
-    if result["status"] == "success":
-        # KYC complete, go to underwriting
-        underwriting_message = "🎉 KYC Completed Successfully!\n\nProceeding with loan evaluation..."
-        return {
-            "message": result["message"] + "\n\n" + underwriting_message,
-            "stage": "underwriting",
-            "awaitingPan": False,
-            "awaitingAadhaar": False,
-            "awaitingSalarySlip": False,  # Assuming no salary slip needed
-        }
-    else:
-        return {
-            "message": result["message"],
-            "stage": "kyc_collect",
-            "awaitingPan": False,
-            "awaitingAadhaar": True,
-            "awaitingSalarySlip": False,
-        }
+    return {
+        "message": result.get("response", "Upload complete"),
+        "stage": result.get("stage", master_agent.state["stage"]),
+        "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
+        "awaitingPan": result.get("awaitingPan", False),
+        "awaitingAadhaar": result.get("awaitingAadhaar", False),
+        "file": result.get("file"),
+    }
 
 
 # ============================================================

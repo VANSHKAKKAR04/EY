@@ -37,6 +37,18 @@
         "purpose": "business",
         "emi": 11393.50398959726,
         "id": "505_3"
+      },
+      {
+        "name": "car Loan",
+        "type": "car",
+        "amount": 500000.0,
+        "interest_rate": 9.0,
+        "tenure_months": 36,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_RITU_KAKKAR.pdf",
+        "purpose": "car",
+        "emi": 15899.866329970226,
+        "id": "505_4"
       }
     ]
   },
@@ -81,6 +93,40 @@
         "purpose": "car",
         "emi": 15725.911722757419,
         "id": "507_2"
+      }
+    ]
+  },
+  {
+    "id": 509,
+    "Loans": [
+      {
+        "name": "home Loan",
+        "type": "home",
+        "amount": 500000.0,
+        "interest_rate": 6.0,
+        "tenure_months": 36,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_Harry_Potter.pdf",
+        "purpose": "home",
+        "emi": 15210.968725777859,
+        "id": "509_1"
+      }
+    ]
+  },
+  {
+    "id": 510,
+    "Loans": [
+      {
+        "name": "home Loan",
+        "type": "home",
+        "amount": 500000.0,
+        "interest_rate": 6.0,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_Vansh_Kakkar.pdf",
+        "purpose": "home",
+        "emi": 11742.514523968031,
+        "id": "510_1"
       }
     ]
   }

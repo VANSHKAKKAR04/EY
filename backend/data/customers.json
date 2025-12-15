@@ -6514,7 +6514,6 @@
     "pan_number": "ABCDE0501F",
     "aadhaar_number": "123456789512"
   },
- 
   {
     "id": 503,
     "name": "Anmol Kakkar",
@@ -6553,10 +6552,10 @@
     "phone": "8130806079",
     "salary": 56000,
     "preapproved_limit": 400000,
-    "existing_loans": 4,
+    "existing_loans": 5,
     "email": "ritukakkar04@gmail.com",
     "password_hash": "8fbcec40735339110fa8af074c696976b80fcb7cd31eea4ed650ebb4d58717ca",
-    "credit_score": 700,
+    "credit_score": 675,
     "pan_number": "ABCDE0505F",
     "aadhaar_number": "123456789516"
   },
@@ -6591,18 +6590,33 @@
     "aadhaar_number": "123456789518"
   },
   {
-    "id": 508,
-    "name": "VANSH KAKKAR",
-    "age": 24,
+    "id": 509,
+    "name": "Harry Potter",
+    "age": 32,
     "city": "Delhi",
-    "phone": "9717831730",
+    "phone": "8130806079",
     "salary": 56000,
-    "preapproved_limit": 800000,
-    "existing_loans": 0,
-    "email": "vk04@gmail.com",
-    "password_hash": "a7d0f4937c8c935d9001a766fb2de56a566153607da3d4b908c02e3a47610bc3",
+    "preapproved_limit": 400000,
+    "existing_loans": 1,
+    "email": "hp04@gmail.com",
+    "password_hash": "e721ae7d7c478e135d50330f55a41087210156d6d72455a560fec0a94c840402",
     "pan_number": "LPNPK9367M",
     "aadhaar_number": "3459 3541 6357",
-    "credit_score": 850
+    "credit_score": 775
+  },
+  {
+    "id": 510,
+    "name": "Vansh Kakkar",
+    "age": 23,
+    "city": "Delhi",
+    "phone": "8130806079",
+    "salary": 56000,
+    "preapproved_limit": 400000,
+    "existing_loans": 1,
+    "email": "vanshkakkar04@gmail.com",
+    "password_hash": "b8c861fe6b3952a189d92656ca96e05925d2568a7995c9016f6eebef5364f5b0",
+    "pan_number": "LPNPK9367M",
+    "aadhaar_number": "345935416357",
+    "credit_score": 775
   }
 ]

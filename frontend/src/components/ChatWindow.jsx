@@ -26,9 +26,10 @@ export default function ChatWindow() {
 
   const [input, setInput] = useState("");
   const [stage, setStage] = useState("greeting");
+  // State flags for file uploads (must match backend response keys)
   const [awaitingSalarySlip, setAwaitingSalarySlip] = useState(false);
-  const [awaitingPan, setAwaitingPan] = useState(false);
-  const [awaitingAadhaar, setAwaitingAadhaar] = useState(false);
+  const [awaitingPan, setAwaitingPan] = useState(false); // Retained but functionally overridden by stage === "pan_slip"
+  const [awaitingAadhaar, setAwaitingAadhaar] = useState(false); // Retained but functionally overridden by stage === "aadhaar_slip"
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -38,6 +39,19 @@ export default function ChatWindow() {
       navigate("/login");
     }
   }, [navigate]);
+
+  // -----------------------------------------------------------
+  // DEBUG LOGGING HOOK
+  // -----------------------------------------------------------
+  useEffect(() => {
+    console.log(
+      "*** CLIENT STATE UPDATE ***\n",
+      `Stage: ${stage}\n`,
+      `awaitingPan: ${awaitingPan}\n`,
+      `awaitingAadhaar: ${awaitingAadhaar}\n`,
+      `awaitingSalarySlip: ${awaitingSalarySlip}\n`
+    );
+  }, [stage, awaitingPan, awaitingAadhaar, awaitingSalarySlip]);
 
   // -----------------------------------------------------------
   // SEND MESSAGE TO BACKEND
@@ -51,20 +65,35 @@ export default function ChatWindow() {
     setSending(true);
 
     try {
+      const response = await sendMessage(msg);
+
+      console.log("<<< BACKEND RESPONSE (handleSend) >>>", response);
+
       const {
         message,
         stage: newStage,
         awaitingSalarySlip: awaiting,
-        awaitingPan,
-        awaitingAadhaar,
+        awaitingPan: newAwaitingPan,
+        awaitingAadhaar: newAwaitingAadhaar,
         file,
-      } = await sendMessage(msg);
+      } = response;
 
       setMessages((prev) => [...prev, { sender: "bot", text: message, file }]);
       setStage(newStage);
-      setAwaitingSalarySlip(awaiting);
-      setAwaitingPan(awaitingPan || false);
-      setAwaitingAadhaar(awaitingAadhaar || false);
+      setAwaitingSalarySlip(awaiting || false);
+      setAwaitingPan(newAwaitingPan || false);
+      setAwaitingAadhaar(newAwaitingAadhaar || false);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `❌ An error occurred: ${
+            error.message || "Could not connect to server."
+          }`,
+        },
+      ]);
     } finally {
       setSending(false);
     }
@@ -76,38 +105,63 @@ export default function ChatWindow() {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    e.target.value = null; // Reset file input
 
     setUploading(true);
 
+    console.log(
+      "--- Upload Attempt ---",
+      `Stage: ${stage}`,
+      `Expecting Slip: ${awaitingSalarySlip}`
+    );
+
     try {
       let uploadFunction;
-      if (awaitingSalarySlip) {
-        uploadFunction = uploadSalarySlip;
-      } else if (awaitingPan) {
+      // Determine which document the system is currently awaiting based on the STAGE
+      if (stage === "pan_slip") {
         uploadFunction = uploadPan;
-      } else if (awaitingAadhaar) {
+      } else if (stage === "aadhaar_slip") {
         uploadFunction = uploadAadhaar;
+      } else if (stage === "salary_slip") {
+        uploadFunction = uploadSalarySlip;
       } else {
-        throw new Error("No upload type specified");
+        throw new Error(`No upload handler defined for stage: ${stage}`);
       }
+
+      const response = await uploadFunction(file);
+
+      console.log("<<< BACKEND RESPONSE (handleUpload) >>>", response);
 
       const {
         message,
         stage: newStage,
         awaitingSalarySlip: awaiting,
-        awaitingPan,
-        awaitingAadhaar,
+        awaitingPan: newAwaitingPan,
+        awaitingAadhaar: newAwaitingAadhaar,
         file: fileLink,
-      } = await uploadFunction(file);
+      } = response;
 
       setMessages((prev) => [
         ...prev,
+        { sender: "user", text: `Uploaded: ${file.name}` },
         { sender: "bot", text: message, file: fileLink },
       ]);
+
       setStage(newStage);
-      setAwaitingSalarySlip(awaiting);
-      setAwaitingPan(awaitingPan || false);
-      setAwaitingAadhaar(awaitingAadhaar || false);
+      setAwaitingSalarySlip(awaiting || false);
+      setAwaitingPan(newAwaitingPan || false);
+      setAwaitingAadhaar(newAwaitingAadhaar || false);
+    } catch (error) {
+      console.error("Upload error:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `❌ Document upload failed. Please try again. (${
+            error.message || "Server error"
+          })`,
+        },
+      ]);
     } finally {
       setUploading(false);
     }
@@ -132,7 +186,7 @@ export default function ChatWindow() {
 
   return (
     <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      {/* HEADER */}
+      {/* HEADER (UNMODIFIED) */}
       <div className="bg-white rounded-t-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
           LA
@@ -143,7 +197,7 @@ export default function ChatWindow() {
         </div>
       </div>
 
-      {/* MESSAGES */}
+      {/* MESSAGES (UNMODIFIED) */}
       <div className="flex-1 overflow-y-auto bg-white border-x border-slate-200 p-4 space-y-3">
         {messages.map((m, i) => (
           <div
@@ -192,7 +246,7 @@ export default function ChatWindow() {
         )}
       </div>
 
-      {/* SALARY SLIP UPLOAD */}
+      {/* SALARY SLIP UPLOAD (Checks stage === "salary_slip") */}
       {awaitingSalarySlip && stage === "salary_slip" && (
         <div className="bg-white border-x border-slate-200 px-4 py-3">
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
@@ -233,8 +287,8 @@ export default function ChatWindow() {
         </div>
       )}
 
-      {/* PAN CARD UPLOAD */}
-      {awaitingPan && stage === "kyc_collect" && (
+      {/* PAN CARD UPLOAD (FIXED: Checks for stage === "pan_slip") */}
+      {stage === "pan_slip" && (
         <div className="bg-white border-x border-slate-200 px-4 py-3">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
@@ -274,8 +328,8 @@ export default function ChatWindow() {
         </div>
       )}
 
-      {/* AADHAAR CARD UPLOAD */}
-      {awaitingAadhaar && stage === "kyc_collect" && (
+      {/* AADHAAR CARD UPLOAD (FIXED: Checks for stage === "aadhaar_slip") */}
+      {stage === "aadhaar_slip" && (
         <div className="bg-white border-x border-slate-200 px-4 py-3">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
@@ -315,7 +369,7 @@ export default function ChatWindow() {
         </div>
       )}
 
-      {/* UNDERWRITING BANNER */}
+      {/* UNDERWRITING BANNER (UNMODIFIED) */}
       {stage === "underwriting" && (
         <div className="bg-white border-x border-slate-200 px-4 py-3">
           <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
@@ -331,8 +385,7 @@ export default function ChatWindow() {
           </div>
         </div>
       )}
-
-      {/* INPUT BAR */}
+      {/* INPUT BAR (UNMODIFIED) */}
       <div className="bg-white rounded-b-2xl shadow-sm border border-slate-200 p-4">
         <div className="flex gap-2">
           <input
