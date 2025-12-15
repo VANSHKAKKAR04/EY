@@ -20,7 +20,7 @@ export default function ChatWindow() {
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: "👋 Hello! I'm your Tata Capital AI Assistant.\nWould you like to apply for a personal loan today? (Yes/No)",
+      text: "👋 Hello! I'm FinWise, your Tata Capital AI Assistant.\nWould you like to apply for a personal loan today? (Yes/No)",
     },
   ]);
 

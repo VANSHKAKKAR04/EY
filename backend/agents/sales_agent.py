@@ -1,3 +1,4 @@
+# sales_agent.py
 from services.mistral_api import query_mistral
 from services.rag_service import RAGService
 import json
@@ -21,7 +22,8 @@ class SalesAgent:
 
         # Track loan details and purpose
         self.stage = "start"  # start → ask_amount → ask_tenure → ask_purpose → confirm
-        self.context = {"amount": None, "tenure": None, "purpose": None}
+        # self.context["name"] will be set by MasterAgent if user is logged in.
+        self.context = {"amount": None, "tenure": None, "purpose": None, "name": None} 
 
         print("[DEBUG] SalesAgent loaded with", len(self.customers), "customers.")
 
@@ -85,6 +87,10 @@ class SalesAgent:
 
         # Try extracting any amount/tenure the user might have mentioned
         amount, tenure = self.extract_loan_details(msg)
+        
+        # Determine personalized prefix
+        name = self.context.get("name")
+        prefix = f"{name} — " if name else ""
 
         # -------------------------------------------------
         # STEP 1 — Initial greeting inside Sales
@@ -104,7 +110,7 @@ class SalesAgent:
         elif self.stage == "ask_amount":
             if not amount:
                 print("[DEBUG] No valid amount found.")
-                return "Sure — please enter your desired loan amount in ₹.", None
+                return f"{prefix}Please enter your desired loan amount in ₹.", None
 
             self.context["amount"] = amount
             self.stage = "ask_tenure"
@@ -123,7 +129,7 @@ class SalesAgent:
             if not tenure:
                 print("[DEBUG] No valid tenure found.")
                 return (
-                    "Please mention the repayment period (e.g., 3 years, 5 years).",
+                    f"{prefix}Please mention the repayment period (e.g., 3 years, 5 years).",
                     None
                 )
 
@@ -139,13 +145,13 @@ class SalesAgent:
             )
 
         # -------------------------------------------------
-        # STEP 4 — Ask for loan purpose
+        # STEP 4 — Ask for loan purpose (UPDATED PROMPT)
         # -------------------------------------------------
         elif self.stage == "ask_purpose":
             if not msg or len(msg.strip()) < 2:
                 print("[DEBUG] No purpose provided.")
                 return (
-                    "Could you please tell me the purpose of your loan?",
+                    f"{prefix}Could you please tell me the purpose of your loan?",
                     None
                 )
 
@@ -154,20 +160,23 @@ class SalesAgent:
 
             print(f"[DEBUG] Transition to 'confirm' | purpose={self.context['purpose']}")
 
+            # --- BEGIN UPDATED PROMPT ---
             prompt = f"""
-            You are a professional Tata Capital AI Sales Assistant acting as a bank officer.
-            The customer wants a loan of ₹{self.context['amount']} for {self.context['tenure']} years.
+            You are a professional Tata Capital AI Sales Assistant, named FinWise, acting as a bank officer.
+            Your task is to generate a confirmation message for the customer and guide them to the KYC stage.
+            
+            Customer Name: {self.context['name'] if self.context.get('name') else 'Customer'}
+            Loan Amount: ₹{self.context['amount']:,}
+            Loan Tenure: {self.context['tenure']}
             Loan Purpose: {self.context['purpose']}
 
-            Respond professionally:
-            - Acknowledge and validate their loan purpose
-            - Show empathy and understanding
-            - Mention that interest rates are typically 8.5% to 13% depending on profile
-            - Politely explain you'll now collect their KYC details and evaluate their profile
-            - Ask them to proceed with the identity verification process
+            Generate a response that follows this **exact** structure and formatting (use line breaks and capitalization as shown), substituting the values for the variables:
             
-            Keep it warm and professional, like a bank officer would.
+            Dear {self.context['name']}, Thank you for reaching out to Tata Capital for your {self.context['purpose']} loan needs. We understand you're seeking a loan of ₹{self.context['amount']:,} for a term of {self.context['tenure']} years. It's important to note that our interest rates typically range from 8.5% to 13%, which may vary based on your profile and credit score. To move forward, we kindly ask you to proceed immediately with the identity verification (KYC) process, as this will help us evaluate your profile and finalize your application. Looking forward to assisting you with your {self.context['purpose']} loan needs. Best regards, FinWise - Tata Capital AI Sales Assistant
+            
+            Ensure the entire response is a single, complete block of text that matches the required output line-by-line, with no extra text or explanations.
             """
+            # --- END UPDATED PROMPT ---
 
             return query_mistral(prompt), "kyc"
 

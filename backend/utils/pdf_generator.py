@@ -5,7 +5,7 @@ from pathlib import Path
 
 def generate_sanction_pdf(name: str, amount: float, rate: float, tenure: int, credit_score: int = None):
     """
-    Generates a formal Tata Capital personal loan sanction letter as a PDF.
+    Generates a formal FinWise(Tata Capital) personal loan sanction letter as a PDF.
     """
     # Folder for generated letters
     output_dir = Path("sanctions")
@@ -18,7 +18,7 @@ def generate_sanction_pdf(name: str, amount: float, rate: float, tenure: int, cr
 
     # Header
     c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(width / 2, 800, "TATA CAPITAL - PERSONAL LOAN SANCTION LETTER")
+    c.drawCentredString(width / 2, 800, "FinWise - PERSONAL LOAN SANCTION LETTER")
 
     # Metadata
     c.setFont("Helvetica", 10)
@@ -49,10 +49,10 @@ Loan Details:
     • Approx. EMI: ₹{emi:,.2f}
     • Credit Score: {credit_score if credit_score else 'Not available'}
 
-Please note this offer is subject to standard Tata Capital terms and conditions.
+Please note this offer is subject to standard FinWise terms and conditions.
 
 Warm regards,
-Tata Capital Loan Department
+FinWise (Tata Capital Loan Department)
     """)
     c.drawText(text)
 

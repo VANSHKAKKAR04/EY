@@ -8,7 +8,15 @@ from services.crm_api import update_customer_loans
 
 
 class MasterAgent:
-    # ... (init and _create_response are correct and unchanged) ...
+    """
+    Correct Pipeline:
+    greeting → sales → kyc → kyc_collect (personal info/salary input)
+    → pan_slip → aadhaar_slip
+    → underwriting
+    → salary_slip (ONLY IF underwriting requests)
+    → underwriting (final check) → sanction → complete
+    """
+
     def __init__(self):
         self.sales = SalesAgent()
         self.verify = VerificationAgent()
@@ -27,7 +35,7 @@ class MasterAgent:
         }
 
     def _create_response(self, response_text, new_stage, slip=False, pan=False, aadhaar=False, file=None):
-        """Helper to create consistent response structure, ensuring all flags are present."""
+        """Helper to create consistent response structure."""
         return {
             "response": response_text,
             "stage": new_stage,
@@ -44,7 +52,7 @@ class MasterAgent:
         print(f"\n[DEBUG] MasterAgent handling stage='{stage}' | message='{msg}'")
 
         # --------------------------------------------------------------
-        # 1️⃣ GREETING (Unchanged)
+        # 1️⃣ GREETING (FIXED NAME PASSING)
         # --------------------------------------------------------------
         if stage == "greeting":
             msg_lower = msg.lower()
@@ -52,7 +60,8 @@ class MasterAgent:
                 name = user_profile.get("name") or "there"
                 self.state["stage"] = "sales"
                 self.sales.stage = "ask_amount"
-                self.sales.context["name"] = name
+                self.sales.context["name"] = name  # Set name in SalesAgent context
+                self.state["customer_name"] = name  # Store name in MasterAgent state
                 return self._create_response(
                     f"Hi {name}! I see you're logged in. Let's begin your loan application.\nPlease tell me how much loan amount you are looking for.",
                     "sales"
@@ -71,19 +80,24 @@ class MasterAgent:
                 )
             else:
                 return self._create_response(
-                    "👋 Hello! I'm your Tata Capital AI Assistant.\nWould you like to apply for a personal loan today? (Yes/No)",
+                    "👋 Hello! I'm your FinWise, your Tata Capital AI Assistant.\nWould you like to apply for a personal loan today? (Yes/No)",
                     "greeting"
                 )
 
         # --------------------------------------------------------------
-        # 2️⃣ SALES STAGE (Unchanged)
+        # 2️⃣ SALES STAGE (FIXED NAME RETRIEVAL)
         # --------------------------------------------------------------
         elif stage == "sales":
             if self.sales.stage == "start":
                 self.sales.stage = "ask_amount"
             
             response, next_stage = self.sales.handle_sales(msg)
-            self.state["customer_name"] = self.sales.context.get("name")
+            
+            # Ensure customer_name is set from context if available
+            name_from_context = self.sales.context.get("name")
+            if name_from_context and self.state["customer_name"] is None:
+                self.state["customer_name"] = name_from_context
+                
             self.state["loan_amount"] = self.sales.context.get("amount") or 0
             self.state["tenure"] = self.sales.context.get("tenure") or 0
 
@@ -97,7 +111,7 @@ class MasterAgent:
 
         # --------------------------------------------------------------
         # 3️⃣ KYC START (Unchanged)
-        # --------------------------------------------------------------
+        # ----------------------------------------------------------------
         elif stage == "kyc":
             if self.user_profile:
                 response = self.verify.start_kyc_for_profile(self.user_profile)
@@ -107,7 +121,7 @@ class MasterAgent:
             return self._create_response(response, "kyc_collect")
 
         # --------------------------------------------------------------
-        # 3.1️⃣ KYC MULTI-STEP COLLECTION (Text Input Stage)
+        # 3.1️⃣ KYC MULTI-STEP COLLECTION (Unchanged)
         # --------------------------------------------------------------
         elif stage == "kyc_collect":
             response, kyc_complete, verified_record = self.verify.collect_step(msg)
@@ -150,23 +164,21 @@ class MasterAgent:
             return self._create_response(response, "kyc_collect")
 
         # --------------------------------------------------------------
-        # 3.2️⃣ NEW: PAN SLIP UPLOAD STAGE (Text input handler)
+        # 3.2️⃣ NEW: PAN SLIP UPLOAD STAGE (Unchanged)
         # --------------------------------------------------------------
         elif stage == "pan_slip":
-            # If user sends a message instead of uploading, re-prompt for the file
             return self._create_response(
-                "⚠️ Please upload your PAN Card document to continue. Text input is not accepted in this stage.",
+                "📄 Please upload your PAN Card document to continue.",
                 "pan_slip",
                 pan=True
             )
 
         # --------------------------------------------------------------
-        # 3.3️⃣ NEW: AADHAAR SLIP UPLOAD STAGE (Text input handler)
+        # 3.3️⃣ NEW: AADHAAR SLIP UPLOAD STAGE (Unchanged)
         # --------------------------------------------------------------
         elif stage == "aadhaar_slip":
-            # If user sends a message instead of uploading, re-prompt for the file
             return self._create_response(
-                "⚠️ Please upload your Aadhaar Card document to continue. Text input is not accepted in this stage.",
+                "📄 Please upload your Aadhaar Card document to continue.",
                 "aadhaar_slip",
                 aadhaar=True
             )
@@ -242,7 +254,7 @@ class MasterAgent:
         return self._create_response("I didn't understand — could you rephrase?", stage)
 
     # =================================================================
-    # FILE UPLOAD HANDLER (CRITICAL FIX FOR PAN/AADHAAR TRANSITION)
+    # FILE UPLOAD HANDLER (Unchanged)
     # =================================================================
     def handle_file_upload(self, filepath: str):
         print(f"[DEBUG] Received file upload: {filepath} at stage {self.state['stage']} | Verify step: {self.verify.step}")
@@ -257,7 +269,7 @@ class MasterAgent:
             # Successful PAN upload transitions to Aadhaar upload stage
             if self.verify.step == "kyc_collect_aadhaar_ready":
                 
-                self.state["stage"] = "aadhaar_slip" # Set next stage
+                self.state["stage"] = "aadhaar_slip"
                 
                 return self._create_response(
                     response + "\n\n📄 Next, please upload your **Aadhaar Card** document.",
@@ -279,7 +291,7 @@ class MasterAgent:
             # Successful Aadhaar upload transitions back to kyc_collect for manual salary input
             if self.verify.step == "awaiting_salary":
                 
-                self.state["stage"] = "kyc_collect" # Set next stage
+                self.state["stage"] = "kyc_collect"
                 
                 return self._create_response(
                     response + "\n\nFinal step: Please enter your monthly salary (for cross-check).",

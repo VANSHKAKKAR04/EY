@@ -127,6 +127,42 @@
         "purpose": "home",
         "emi": 11742.514523968031,
         "id": "510_1"
+      },
+      {
+        "name": "car Loan",
+        "type": "car",
+        "amount": 500000.0,
+        "interest_rate": 7.5,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_Vansh_Kakkar.pdf",
+        "purpose": "car",
+        "emi": 12089.450968865469,
+        "id": "510_2"
+      },
+      {
+        "name": "car Loan",
+        "type": "car",
+        "amount": 500000.0,
+        "interest_rate": 7.5,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_Vansh_Kakkar.pdf",
+        "purpose": "car",
+        "emi": 12089.450968865469,
+        "id": "510_3"
+      },
+      {
+        "name": "car Loan",
+        "type": "car",
+        "amount": 500000.0,
+        "interest_rate": 7.5,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_Vansh_Kakkar.pdf",
+        "purpose": "car",
+        "emi": 12089.450968865469,
+        "id": "510_4"
       }
     ]
   }
