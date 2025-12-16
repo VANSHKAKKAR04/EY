@@ -14,6 +14,11 @@ export default function Signup() {
     pan_number: "",
     aadhaar_number: "",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPAN, setShowPAN] = useState(false);
+  const [showAadhaar, setShowAadhaar] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -25,6 +30,7 @@ export default function Signup() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
       const payload = {
         name: form.name,
@@ -37,8 +43,8 @@ export default function Signup() {
         pan_number: form.pan_number,
         aadhaar_number: form.aadhaar_number,
       };
+
       const res = await signup(payload);
-      // store customer locally
       localStorage.setItem("customer", JSON.stringify(res.customer));
       navigate("/profile");
     } catch (err) {
@@ -50,9 +56,14 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="fixed top-0 left-0 w-full z-50">
+        <Navbar />
+      </div>
       <div className="max-w-md w-full bg-white p-8 rounded shadow">
         <h2 className="text-2xl font-bold mb-4">Sign up</h2>
+
         {error && <div className="mb-3 text-red-600">{error}</div>}
+
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             name="name"
@@ -61,6 +72,7 @@ export default function Signup() {
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
+
           <div className="grid grid-cols-2 gap-2">
             <input
               name="age"
@@ -77,6 +89,7 @@ export default function Signup() {
               className="p-2 border rounded"
             />
           </div>
+
           <input
             name="phone"
             placeholder="Phone"
@@ -84,6 +97,7 @@ export default function Signup() {
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
+
           <input
             name="salary"
             placeholder="Salary"
@@ -91,6 +105,7 @@ export default function Signup() {
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
+
           <input
             name="email"
             placeholder="Email"
@@ -98,28 +113,63 @@ export default function Signup() {
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
-          <input
-            name="password"
-            placeholder="Password"
-            type="password"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-          />
-          <input
-            name="pan_number"
-            placeholder="PAN Number"
-            value={form.pan_number}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-          />
-          <input
-            name="aadhaar_number"
-            placeholder="Aadhaar Number"
-            value={form.aadhaar_number}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-          />
+
+          {/* Password */}
+          <div className="relative">
+            <input
+              name="password"
+              placeholder="Password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={handleChange}
+              className="w-full p-2 border rounded pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-2 text-sm text-blue-600"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {/* PAN */}
+          <div className="relative">
+            <input
+              name="pan_number"
+              placeholder="PAN Number"
+              type={showPAN ? "text" : "password"}
+              value={form.pan_number}
+              onChange={handleChange}
+              className="w-full p-2 border rounded pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPAN(!showPAN)}
+              className="absolute right-3 top-2 text-sm text-blue-600"
+            >
+              {showPAN ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {/* Aadhaar */}
+          <div className="relative">
+            <input
+              name="aadhaar_number"
+              placeholder="Aadhaar Number"
+              type={showAadhaar ? "text" : "password"}
+              value={form.aadhaar_number}
+              onChange={handleChange}
+              className="w-full p-2 border rounded pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowAadhaar(!showAadhaar)}
+              className="absolute right-3 top-2 text-sm text-blue-600"
+            >
+              {showAadhaar ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <button
             disabled={loading}
@@ -128,6 +178,7 @@ export default function Signup() {
             {loading ? "Creating..." : "Create account"}
           </button>
         </form>
+
         <div className="mt-3 text-sm text-slate-600">
           Already have an account?{" "}
           <a href="/login" className="text-blue-600">

@@ -14,6 +14,7 @@ import {
   uploadAadhaar,
 } from "../services/api";
 import { useNavigate } from "react-router-dom";
+import Navbar from "./Navbar.jsx";
 
 export default function ChatWindow() {
   const navigate = useNavigate();
@@ -187,6 +188,9 @@ export default function ChatWindow() {
   return (
     <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       {/* HEADER (UNMODIFIED) */}
+      <div className="fixed top-0 left-0 w-full z-50">
+        <Navbar />
+      </div>
       <div className="bg-white rounded-t-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
           LA

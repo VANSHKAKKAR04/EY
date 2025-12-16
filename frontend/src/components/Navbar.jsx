@@ -75,7 +75,7 @@ export default function Navbar() {
             </a>
 
             {/* Products Dropdown */}
-            <div className="relative static">
+            {/* <div className="relative static">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -145,14 +145,14 @@ export default function Navbar() {
                   </a>
                 </div>
               )}
-            </div>
+            </div> */}
 
-            <a
+            {/* <a
               href="/eligibility"
               className="text-slate-600 hover:text-blue-600 transition-colors font-medium"
             >
               Check Eligibility
-            </a>
+            </a> */}
 
             {/* Resources Dropdown */}
             <div className="relative static">
@@ -197,7 +197,7 @@ export default function Navbar() {
                       Common questions
                     </div>
                   </a>
-                  <a
+                  {/* <a
                     href="/how-it-works"
                     className="block px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100"
                   >
@@ -207,7 +207,7 @@ export default function Navbar() {
                     <div className="text-sm text-slate-500">
                       Learn about our process
                     </div>
-                  </a>
+                  </a> */}
                   <a
                     href="/customer-stories"
                     className="block px-4 py-3 hover:bg-blue-50 transition-colors"
@@ -360,7 +360,7 @@ export default function Navbar() {
             </a>
 
             {/* Products Mobile */}
-            <div className="px-4 py-2">
+            {/* <div className="px-4 py-2">
               <div className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
                 Products
                 <div className="h-px flex-1 bg-slate-200"></div>
@@ -391,14 +391,14 @@ export default function Navbar() {
                   EMI Calculator
                 </a>
               </div>
-            </div>
+            </div> */}
 
-            <a
+            {/* <a
               href="/eligibility"
               className="block px-4 py-3 text-slate-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               Check Eligibility
-            </a>
+            </a> */}
 
             {/* Resources Mobile */}
             <div className="px-4 py-2">
@@ -419,12 +419,12 @@ export default function Navbar() {
                 >
                   FAQs
                 </a>
-                <a
+                {/* <a
                   href="/how-it-works"
                   className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                 >
                   How It Works
-                </a>
+                </a> */}
                 <a
                   href="/customer-stories"
                   className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
