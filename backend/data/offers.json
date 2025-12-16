@@ -139,6 +139,18 @@
         "purpose": "car",
         "emi": 12265.22146730317,
         "id": "510_2"
+      },
+      {
+        "name": "home Loan",
+        "type": "home",
+        "amount": 500000.0,
+        "interest_rate": 6.75,
+        "tenure_months": 48,
+        "status": "sanctioned",
+        "sanction_letter_path": "sanctions\\sanction_Vansh_Kakkar.pdf",
+        "purpose": "home",
+        "emi": 11915.213978057875,
+        "id": "510_3"
       }
     ]
   }

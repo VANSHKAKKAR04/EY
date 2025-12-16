@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { signup } from "../services/api";
 import { useNavigate } from "react-router-dom";
-
+import Navbar from "../components/Navbar.jsx";
 export default function Signup() {
   const [form, setForm] = useState({
     name: "",
