@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, UploadFile, File, Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles  # <--- ADD THIS LINE
 from agents.master_agent import MasterAgent
 import shutil
 from pathlib import Path
@@ -21,7 +22,7 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 SANCTION_DIR = Path("sanctions")
 SANCTION_DIR.mkdir(exist_ok=True)
-
+app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
 
 # ============================================================
 # 🟦 CHAT ENDPOINT

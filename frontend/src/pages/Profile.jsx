@@ -152,7 +152,7 @@ export default function Profile() {
                   {loan.sanction_letter_path && (
                     <div className="mt-4">
                       <a
-                        href={`http://localhost:8002/${loan.sanction_letter_path}`}
+                        href={`http://localhost:8000/${loan.sanction_letter_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline"
