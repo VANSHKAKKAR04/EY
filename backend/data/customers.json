@@ -6612,12 +6612,12 @@
     "phone": "8130806079",
     "salary": 56000,
     "preapproved_limit": 400000,
-    "existing_loans": 5,
+    "existing_loans": 6,
     "email": "vanshkakkar04@gmail.com",
     "password_hash": "b8c861fe6b3952a189d92656ca96e05925d2568a7995c9016f6eebef5364f5b0",
     "pan_number": "LPNPK9367M",
     "aadhaar_number": "345935416357",
-    "credit_score": 600
+    "credit_score": 650
   },
   {
     "id": 511,
