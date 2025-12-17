@@ -38,9 +38,11 @@ session_manager = SessionManager()
 # ============================================================
 # 💾 PERSISTENT STORAGE (Render-safe)
 # ============================================================
-DATA_DIR = Path("/data")
-UPLOAD_DIR = DATA_DIR / "uploads"
-SANCTION_DIR = Path("sanctions")
+
+BASE_DIR = Path(__file__).resolve().parent  # backend/
+DATA_DIR = BASE_DIR / "data"
+UPLOAD_DIR = BASE_DIR / "uploads"
+SANCTION_DIR = BASE_DIR/"sanctions"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 SANCTION_DIR.mkdir(exist_ok=True)
