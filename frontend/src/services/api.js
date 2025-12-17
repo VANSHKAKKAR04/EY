@@ -1,90 +1,157 @@
+// src/services/api.js
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+/* -----------------------------
+   Session helpers
+----------------------------- */
+function getSessionId() {
+  return typeof window !== "undefined"
+    ? localStorage.getItem("session_id")
+    : null;
+}
+
+function saveSessionId(sessionId) {
+  if (typeof window !== "undefined" && sessionId) {
+    localStorage.setItem("session_id", sessionId);
+  }
+}
+
+/* -----------------------------
+   Chat
+----------------------------- */
 export async function sendMessage(message) {
-  // include logged-in customer from localStorage if present
   const raw =
     typeof window !== "undefined" ? localStorage.getItem("customer") : null;
   const customer = raw ? JSON.parse(raw) : undefined;
 
-  const res = await fetch("http://localhost:8000/chat", {
+  const session_id = getSessionId();
+
+  const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, customer }),
+    body: JSON.stringify({
+      message,
+      customer,
+      session_id,
+    }),
   });
-  return res.json();
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.detail || "Failed to send message");
+  }
+
+  if (data.session_id) {
+    saveSessionId(data.session_id);
+  }
+
+  return data;
 }
 
+/* -----------------------------
+   File uploads
+----------------------------- */
 export async function uploadSalarySlip(file) {
+  const session_id = getSessionId();
+  if (!session_id) throw new Error("Session not found");
+
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch("http://localhost:8000/upload-salary-slip", {
-    method: "POST",
-    body: formData,
-  });
-  return res.json();
+
+  const res = await fetch(
+    `${API_BASE}/upload-salary-slip?session_id=${session_id}`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Upload failed");
+  return data;
 }
 
 export async function uploadPan(file) {
-  const raw =
-    typeof window !== "undefined" ? localStorage.getItem("customer") : null;
-  const customer = raw ? JSON.parse(raw) : undefined;
-  const customerId = customer ? customer.id : null;
+  const session_id = getSessionId();
+  if (!session_id) throw new Error("Session not found");
+
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(
-    `http://localhost:8000/upload-pan?customer_id=${customerId}`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-  return res.json();
+
+  const res = await fetch(`${API_BASE}/upload-pan?session_id=${session_id}`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Upload failed");
+  return data;
 }
 
 export async function uploadAadhaar(file) {
-  const raw =
-    typeof window !== "undefined" ? localStorage.getItem("customer") : null;
-  const customer = raw ? JSON.parse(raw) : undefined;
-  const customerId = customer ? customer.id : null;
+  const session_id = getSessionId();
+  if (!session_id) throw new Error("Session not found");
+
   const formData = new FormData();
   formData.append("file", file);
+
   const res = await fetch(
-    `http://localhost:8000/upload-aadhaar?customer_id=${customerId}`,
+    `${API_BASE}/upload-aadhaar?session_id=${session_id}`,
     {
       method: "POST",
       body: formData,
     }
   );
-  return res.json();
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Upload failed");
+  return data;
 }
 
-// -----------------
-// Auth endpoints (CRM mock server runs on 8001)
-// -----------------
+/* -----------------------------
+   CRM Auth
+----------------------------- */
 export async function signup(payload) {
-  const res = await fetch("http://localhost:8001/signup", {
+  const res = await fetch(`${API_BASE}/crm/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
   return data;
 }
 
 export async function login(payload) {
-  const res = await fetch("http://localhost:8001/login", {
+  const res = await fetch(`${API_BASE}/crm/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+
+  if (data.customer) {
+    localStorage.setItem("customer", JSON.stringify(data.customer));
+  }
+
   return data;
 }
 
-// -----------------
-// Offer Mart endpoints (runs on 8002)
-// -----------------
+/* -----------------------------
+   Offer Mart
+----------------------------- */
 export async function getUserLoans(userId) {
-  const res = await fetch(`http://localhost:8002/user/${userId}/loans`);
-  return res.json();
+  const res = await fetch(`${API_BASE}/offer-mart/user/${userId}/loans`);
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || "Failed to fetch loans");
+  }
+
+  return data;
 }

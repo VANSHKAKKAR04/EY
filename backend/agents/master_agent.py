@@ -124,6 +124,11 @@ class MasterAgent:
         # 3.1️⃣ KYC MULTI-STEP COLLECTION (Unchanged)
         # --------------------------------------------------------------
         elif stage == "kyc_collect":
+            if self.verify.step == "salary_ready" and not msg.strip().isdigit():
+                return self._create_response(
+                        "💰 Please enter your monthly salary (numbers only).",
+                        "kyc_collect"
+               )
             response, kyc_complete, verified_record = self.verify.collect_step(msg)
 
             if isinstance(verified_record, list):

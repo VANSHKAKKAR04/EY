@@ -132,9 +132,10 @@ def extract_from_card(file_path: Path) -> str:
 
     return ""
 
+def normalize_pan(pan: str) -> str:
+    return pan.strip().upper().replace(" ", "")
 
 def validate_pan_card(customer_name: str, pan_number: str, file_path: Path) -> dict:
-    """Validate PAN card: extract PAN, compare with customer data."""
     text = extract_from_card(file_path)
     if not text:
         return {"status": "error", "message": "Could not extract text from PAN card."}
@@ -144,13 +145,20 @@ def validate_pan_card(customer_name: str, pan_number: str, file_path: Path) -> d
     if not extracted_pan:
         return {"status": "error", "message": "PAN number not found on card."}
 
-    if extracted_pan != pan_number:
+    extracted_pan_clean = normalize_pan(extracted_pan)
+    pan_number_clean = normalize_pan(pan_number)
+
+    if extracted_pan_clean != pan_number_clean:
         return {
             "status": "mismatch",
-            "message": f"PAN mismatch: Card has {extracted_pan}, CRM has {pan_number}."
+            "message": f"PAN mismatch: Card has {extracted_pan_clean}, CRM has {pan_number_clean}."
         }
 
-    return {"status": "success", "message": "PAN card verified successfully."}
+    return {
+        "status": "success",
+        "message": "PAN card verified successfully ✔️"
+    }
+
 
 
 def validate_aadhaar_card(customer_name: str, aadhaar_number: str, file_path: Path) -> dict:

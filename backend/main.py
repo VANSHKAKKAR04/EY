@@ -1,27 +1,51 @@
 from fastapi import FastAPI, Request, UploadFile, File, Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles  # <--- ADD THIS LINE
-from agents.master_agent import MasterAgent
-import shutil
-from pathlib import Path
-from services.crm_api import get_customer_by_id
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
+from routers.crm import router as crm_router
+from routers.offer_mart import router as offer_mart_router
+from services.crm_api import get_customer_by_id
+from services.session_manager import SessionManager
+
+from pathlib import Path
+import shutil
+
+# ============================================================
+# 🚀 APP INITIALIZATION
+# ============================================================
+app = FastAPI(title="Loan Assistant Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # tighten later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-master_agent = MasterAgent()
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# ============================================================
+# 📦 ROUTERS (MUST COME FIRST)
+# ============================================================
+app.include_router(crm_router)
+app.include_router(offer_mart_router)
+
+# ============================================================
+# 🧠 SESSION MANAGER
+# ============================================================
+session_manager = SessionManager()
+
+# ============================================================
+# 💾 PERSISTENT STORAGE (Render-safe)
+# ============================================================
+DATA_DIR = Path("/data")
+UPLOAD_DIR = DATA_DIR / "uploads"
 SANCTION_DIR = Path("sanctions")
+
+UPLOAD_DIR.mkdir(exist_ok=True)
 SANCTION_DIR.mkdir(exist_ok=True)
+
+# Serve sanction PDFs
 app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
 
 # ============================================================
@@ -32,136 +56,87 @@ async def handle_chat(request: Request):
     data = await request.json()
     msg = data.get("message", "")
     customer = data.get("customer")
+    session_id = data.get("session_id")
 
-    # pass optional customer profile to master agent for personalization
-    response = master_agent.handle_message(msg, user_profile=customer)
+    if not session_id:
+        session_id = session_manager.create_session()
 
-    # Ensure consistent keys for frontend, including NEW flags
-    if isinstance(response, dict):
-        return {
-            "message": response.get("response", str(response)),
-            "stage": response.get("stage", master_agent.state["stage"]),
-            "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
-            "awaitingPan": response.get("awaitingPan", False),        # <-- NEW
-            "awaitingAadhaar": response.get("awaitingAadhaar", False),  # <-- NEW
-            "file": response.get("file"),  # optional PDF filename
-        }
+    agent = session_manager.get_agent(session_id)
+    response = agent.handle_message(msg, user_profile=customer)
 
-    # fallback for plain string
     return {
-        "message": str(response),
-        "stage": master_agent.state["stage"],
-        "awaitingSalarySlip": False,
-        "awaitingPan": False,
-        "awaitingAadhaar": False,
+        "session_id": session_id,
+        "message": response.get("response"),
+        "stage": response.get("stage"),
+        "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
+        "awaitingPan": response.get("awaitingPan", False),
+        "awaitingAadhaar": response.get("awaitingAadhaar", False),
+        "file": response.get("file"),
     }
 
-
-# ============================================================# 🟪 GET CUSTOMER PROFILE ENDPOINT
+# ============================================================
+# 🟪 GET CUSTOMER PROFILE
 # ============================================================
 @app.get("/profile/{customer_id}")
 async def get_customer_profile(customer_id: int):
     customer = get_customer_by_id(customer_id)
     if customer:
-        # Remove sensitive fields
         safe = dict(customer)
         safe.pop("password_hash", None)
         return safe
     return {"error": "Customer not found"}
 
+# ============================================================
+# 🟩 FILE UPLOAD HELPERS
+# ============================================================
+def save_and_process_file(session_id: str, file: UploadFile):
+    agent = session_manager.get_agent(session_id)
 
-# ============================================================
-# 🟩 SALARY SLIP UPLOAD ENDPOINT
-# ============================================================
+    file_path = UPLOAD_DIR / file.filename
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return agent.handle_file_upload(str(file_path))
+
 @app.post("/upload-salary-slip")
-async def upload_salary_slip(file: UploadFile = File(...)):
+async def upload_salary_slip(session_id: str, file: UploadFile = File(...)):
+    result = save_and_process_file(session_id, file)
+    return result
 
-    file_path = UPLOAD_DIR / file.filename
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    print(f"[DEBUG] Salary slip uploaded: {file_path}")
-
-    # Update agent state
-    result = master_agent.handle_file_upload(str(file_path))
-
-    # Ensure consistent keys for frontend
-    return {
-        "message": result.get("response", "Upload complete"),
-        "stage": result.get("stage", master_agent.state["stage"]),
-        "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
-        "awaitingPan": result.get("awaitingPan", False),
-        "awaitingAadhaar": result.get("awaitingAadhaar", False),
-        "file": result.get("file"),
-    }
-
-
-# ============================================================
-# 🟥 PAN CARD UPLOAD ENDPOINT (Delegated to MasterAgent)
-# ============================================================
 @app.post("/upload-pan")
-# NOTE: The customer_id parameter should ideally be included in the File request
-# if the frontend handles it, but for simplicity, we rely on the MasterAgent
-# having stored the customer context from previous messages.
-async def upload_pan_card(file: UploadFile = File(...)):
-    
-    file_path = UPLOAD_DIR / file.filename
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+async def upload_pan(session_id: str, file: UploadFile = File(...)):
+    result = save_and_process_file(session_id, file)
+    return result
 
-    print(f"[DEBUG] PAN card uploaded: {file_path}")
-
-    # Delegate file validation and state transition to MasterAgent
-    result = master_agent.handle_file_upload(str(file_path))
-
-    return {
-        "message": result.get("response", "Upload complete"),
-        "stage": result.get("stage", master_agent.state["stage"]),
-        "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
-        "awaitingPan": result.get("awaitingPan", False),
-        "awaitingAadhaar": result.get("awaitingAadhaar", False),
-        "file": result.get("file"),
-    }
-
-
-# ============================================================
-# 🟧 AADHAAR CARD UPLOAD ENDPOINT (Delegated to MasterAgent)
-# ============================================================
 @app.post("/upload-aadhaar")
-# NOTE: Removed customer_id parameter for delegation simplicity
-async def upload_aadhaar_card(file: UploadFile = File(...)):
-    
-    file_path = UPLOAD_DIR / file.filename
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    print(f"[DEBUG] Aadhaar card uploaded: {file_path}")
-
-    # Delegate file validation and state transition to MasterAgent
-    result = master_agent.handle_file_upload(str(file_path))
-
-    return {
-        "message": result.get("response", "Upload complete"),
-        "stage": result.get("stage", master_agent.state["stage"]),
-        "awaitingSalarySlip": result.get("awaitingSalarySlip", False),
-        "awaitingPan": result.get("awaitingPan", False),
-        "awaitingAadhaar": result.get("awaitingAadhaar", False),
-        "file": result.get("file"),
-    }
-
+async def upload_aadhaar(session_id: str, file: UploadFile = File(...)):
+    result = save_and_process_file(session_id, file)
+    return result
 
 # ============================================================
-# 🟨 DOWNLOAD SANCTION LETTER ENDPOINT
+# 🟨 DOWNLOAD SANCTION LETTER
 # ============================================================
 @app.get("/download-sanction/{filename}")
 async def download_sanction_letter(filename: str = FPath(...)):
     file_path = SANCTION_DIR / filename
-
     if not file_path.exists():
-        return {"error": "File not found."}
+        return {"error": "File not found"}
 
     return FileResponse(
         path=file_path,
         filename=file_path.name,
-        media_type="application/pdf"
+        media_type="application/pdf",
     )
+
+# ============================================================
+# 🟧 REACT FRONTEND (LAST, GET ONLY)
+# ============================================================
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIR.exists():
+    @app.get("/{full_path:path}", response_class=HTMLResponse)
+    async def serve_react(full_path: str):
+        index_file = FRONTEND_DIR / "index.html"
+        if index_file.exists():
+            return index_file.read_text()
+        return "Frontend not built", 404

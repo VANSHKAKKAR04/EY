@@ -134,18 +134,20 @@ export default function ChatWindow() {
       console.log("<<< BACKEND RESPONSE (handleUpload) >>>", response);
 
       const {
-        message,
+        response: botResponse,
+        message, // keep for safety
         stage: newStage,
         awaitingSalarySlip: awaiting,
         awaitingPan: newAwaitingPan,
         awaitingAadhaar: newAwaitingAadhaar,
         file: fileLink,
       } = response;
+      const botText = botResponse || message;
 
       setMessages((prev) => [
         ...prev,
         { sender: "user", text: `Uploaded: ${file.name}` },
-        { sender: "bot", text: message, file: fileLink },
+        { sender: "bot", text: botText, file: fileLink },
       ]);
 
       setStage(newStage);
