@@ -12,6 +12,7 @@ import {
   uploadSalarySlip,
   uploadPan,
   uploadAadhaar,
+  API_BASE,
 } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
@@ -181,10 +182,7 @@ export default function ChatWindow() {
   // HANDLE SANCTION LETTER DOWNLOAD
   // -----------------------------------------------------------
   const downloadFile = (filename) => {
-    window.open(
-      `http://localhost:8000/download-sanction/${filename}`,
-      "_blank"
-    );
+    window.open(`${API_BASE}/download-sanction/${filename}`, "_blank");
   };
 
   return (

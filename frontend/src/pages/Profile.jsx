@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUserLoans } from "../services/api";
+import { getUserLoans, API_BASE } from "../services/api";
 import Navbar from "../components/Navbar.jsx";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -21,7 +21,7 @@ export default function Profile() {
       return;
     }
 
-    fetch(`http://localhost:8000/profile/${storedCustomer.id}`)
+    fetch(`${API_BASE}/profile/${storedCustomer.id}`)
       .then((res) => res.json())
       .then((data) => {
         if (!data?.error) {
@@ -152,7 +152,7 @@ export default function Profile() {
                   {loan.sanction_letter_path && (
                     <div className="mt-4">
                       <a
-                        href={`http://localhost:8000/${loan.sanction_letter_path}`}
+                        href={`${API_BASE}/${loan.sanction_letter_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline"
