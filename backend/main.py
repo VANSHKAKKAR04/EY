@@ -18,11 +18,12 @@ app = FastAPI(title="Loan Assistant Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ============================================================
 # 📦 ROUTERS (MUST COME FIRST)
@@ -133,12 +134,13 @@ async def download_sanction_letter(filename: str = FPath(...)):
 # ============================================================
 # 🟧 REACT FRONTEND (LAST, GET ONLY)
 # ============================================================
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
 
-if FRONTEND_DIR.exists():
-    @app.get("/{full_path:path}", response_class=HTMLResponse)
-    async def serve_react(full_path: str):
-        index_file = FRONTEND_DIR / "index.html"
-        if index_file.exists():
-            return index_file.read_text()
-        return "Frontend not built", 404
+# FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
+
+# if FRONTEND_DIR.exists():
+#     @app.get("/{full_path:path}", response_class=HTMLResponse)
+#     async def serve_react(full_path: str):
+#         index_file = FRONTEND_DIR / "index.html"
+#         if index_file.exists():
+#             return index_file.read_text()
+#         return "Frontend not built", 404
