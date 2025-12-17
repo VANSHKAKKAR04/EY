@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, UploadFile, File, Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-
+from fastapi.responses import Response
 from routers.crm import router as crm_router
 from routers.offer_mart import router as offer_mart_router
 from services.crm_api import get_customer_by_id
@@ -47,6 +47,10 @@ SANCTION_DIR = BASE_DIR/"sanctions"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 SANCTION_DIR.mkdir(exist_ok=True)
+
+@app.options("/{path:path}")
+async def preflight_handler(path: str):
+    return Response(status_code=200)
 
 # Serve sanction PDFs
 app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
