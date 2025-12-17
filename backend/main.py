@@ -59,7 +59,7 @@ app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
 # 🟦 CHAT ENDPOINT
 # ============================================================
 
-@app.post("/chat")
+@app.post("api/chat")
 async def handle_chat(request: Request):
     data = await request.json()
 
