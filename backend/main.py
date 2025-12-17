@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, UploadFile, File, Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from routers.crm import router as crm_router
@@ -17,16 +17,23 @@ import shutil
 
 app = FastAPI(title="Loan Assistant Backend")
 
+# ============================================================
+# 🌐 CORS (CRITICAL)
+# ============================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten in prod if needed
+    allow_origins=[
+        "https://ey-front.onrender.com",  # frontend domain
+        "http://localhost:5173",          # local dev
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ============================================================
-# 📦 ROUTERS (MUST COME FIRST)
+# 📦 ROUTERS
 # ============================================================
 
 app.include_router(crm_router)
@@ -39,10 +46,10 @@ app.include_router(offer_mart_router)
 session_manager = SessionManager()
 
 # ============================================================
-# 💾 PERSISTENT STORAGE
+# 💾 STORAGE
 # ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent  # backend/
+BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 SANCTION_DIR = BASE_DIR / "sanctions"
 
@@ -50,16 +57,16 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 SANCTION_DIR.mkdir(exist_ok=True)
 
 # ============================================================
-# 📄 STATIC SANCTION PDFs
+# 📄 STATIC SANCTION FILES
 # ============================================================
 
 app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
 
 # ============================================================
-# 🟦 CHAT ENDPOINT
+# 💬 CHAT API
 # ============================================================
 
-@app.post("/api/chat")
+@app.post("/chat")
 async def handle_chat(request: Request):
     data = await request.json()
 
@@ -84,7 +91,7 @@ async def handle_chat(request: Request):
     }
 
 # ============================================================
-# 🟪 GET CUSTOMER PROFILE
+# 👤 CUSTOMER PROFILE
 # ============================================================
 
 @app.get("/profile/{customer_id}")
@@ -98,7 +105,7 @@ async def get_customer_profile(customer_id: int):
     return safe
 
 # ============================================================
-# 🟩 FILE UPLOAD HELPERS
+# 📤 FILE UPLOAD HELPERS
 # ============================================================
 
 def save_and_process_file(session_id: str, file: UploadFile):
@@ -126,7 +133,7 @@ async def upload_aadhaar(session_id: str, file: UploadFile = File(...)):
     return save_and_process_file(session_id, file)
 
 # ============================================================
-# 🟨 DOWNLOAD SANCTION LETTER
+# 📥 DOWNLOAD SANCTION LETTER
 # ============================================================
 
 @app.get("/download-sanction/{filename}")
@@ -141,23 +148,3 @@ async def download_sanction_letter(filename: str = FPath(...)):
         filename=file_path.name,
         media_type="application/pdf",
     )
-
-# ============================================================
-# 🟧 REACT FRONTEND (SPA FALLBACK – MUST BE LAST)
-# ============================================================
-
-FRONTEND_DIR = BASE_DIR.parent / "frontend" / "dist"
-
-if FRONTEND_DIR.exists():
-
-    # serve Vite assets
-    app.mount(
-        "/assets",
-        StaticFiles(directory=FRONTEND_DIR / "assets"),
-        name="assets",
-    )
-
-    @app.get("/{full_path:path}", response_class=HTMLResponse)
-    async def serve_react(full_path: str):
-        index_file = FRONTEND_DIR / "index.html"
-        return index_file.read_text()
