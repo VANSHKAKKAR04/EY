@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, UploadFile, File, Path as FPath
+from fastapi import FastAPI, UploadFile, File, Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -6,14 +6,12 @@ from fastapi.staticfiles import StaticFiles
 from routers.crm import router as crm_router
 from routers.offer_mart import router as offer_mart_router
 from services.crm_api import get_customer_by_id
-from services.session_manager import SessionManager
+from agents.master_agent import MasterAgent
 
 from pathlib import Path
 import shutil
 from pydantic import BaseModel
 from typing import Optional, Dict
-
-
 
 # ============================================================
 # 🚀 APP INITIALIZATION
@@ -22,14 +20,14 @@ from typing import Optional, Dict
 app = FastAPI(title="Loan Assistant Backend")
 
 # ============================================================
-# 🌐 CORS (CRITICAL)
+# 🌐 CORS
 # ============================================================
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://ey-front.onrender.com",  # frontend domain
-        "http://localhost:5173",          # local dev
+        "https://ey-front.onrender.com",
+        "http://localhost:5173",
     ],
     allow_credentials=False,
     allow_methods=["*"],
@@ -44,10 +42,10 @@ app.include_router(crm_router)
 app.include_router(offer_mart_router)
 
 # ============================================================
-# 🧠 SESSION MANAGER
+# 🧠 SINGLE GLOBAL AGENT (NO SESSIONS)
 # ============================================================
 
-session_manager = SessionManager()
+agent = MasterAgent()
 
 # ============================================================
 # 💾 STORAGE
@@ -69,45 +67,27 @@ app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
 # ============================================================
 # 💬 CHAT API
 # ============================================================
+
 class ChatRequest(BaseModel):
     message: str
     customer: Optional[Dict] = None
-    session_id: Optional[str] = None
+
 
 @app.post("/chat")
 async def handle_chat(payload: ChatRequest):
-    # data = await request.json()
-    try:
-        msg = payload.message
-        customer = payload.customer
-        # session_id = payload.session_id
+    response = agent.handle_message(
+        payload.message,
+        payload.customer
+    )
 
-        # print(f"Received message: {msg} {customer} {session_id}")
-    
-        # if not session_id:
-        #     session_id = session_manager.create_session()
-
-        # print(f"Using session ID: {session_id}")
-
-        agent = session_manager.get_agent()
-        # print(f"Agent retrieved for session ID: {agent}")
-        response = agent.handle_message(msg, customer)
-        print(f"Response from agent: {response}")
-
-        return {
-            # "session_id": session_id,
-            "message": response.get("response"),
-            "stage": response.get("stage"),
-            "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
-            "awaitingPan": response.get("awaitingPan", False),
-            "awaitingAadhaar": response.get("awaitingAadhaar", False),
-            "file": response.get("file"),
-        }
-    except:
-        return {"error": "An error occurred while processing the chat message.", "session_id": session_id,"agent": str(agent)}
-
-
-    
+    return {
+        "message": response.get("response"),
+        "stage": response.get("stage"),
+        "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
+        "awaitingPan": response.get("awaitingPan", False),
+        "awaitingAadhaar": response.get("awaitingAadhaar", False),
+        "file": response.get("file"),
+    }
 
 # ============================================================
 # 👤 CUSTOMER PROFILE
@@ -127,29 +107,31 @@ async def get_customer_profile(customer_id: int):
 # 📤 FILE UPLOAD HELPERS
 # ============================================================
 
-def save_and_process_file(session_id: str, file: UploadFile):
-    agent = session_manager.get_agent(session_id)
-
+def save_and_process_file(file: UploadFile):
     file_path = UPLOAD_DIR / file.filename
+
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     return agent.handle_file_upload(str(file_path))
 
-
-@app.post("/upload-salary-slip")
-async def upload_salary_slip(session_id: str, file: UploadFile = File(...)):
-    return save_and_process_file(session_id, file)
-
+# ============================================================
+# 📎 FILE UPLOAD ENDPOINTS
+# ============================================================
 
 @app.post("/upload-pan")
-async def upload_pan(session_id: str, file: UploadFile = File(...)):
-    return save_and_process_file(session_id, file)
+async def upload_pan(file: UploadFile = File(...)):
+    return save_and_process_file(file)
 
 
 @app.post("/upload-aadhaar")
-async def upload_aadhaar(session_id: str, file: UploadFile = File(...)):
-    return save_and_process_file(session_id, file)
+async def upload_aadhaar(file: UploadFile = File(...)):
+    return save_and_process_file(file)
+
+
+@app.post("/upload-salary-slip")
+async def upload_salary_slip(file: UploadFile = File(...)):
+    return save_and_process_file(file)
 
 # ============================================================
 # 📥 DOWNLOAD SANCTION LETTER
