@@ -104,7 +104,7 @@ async def handle_chat(payload: ChatRequest):
             "file": response.get("file"),
         }
     except:
-        return {"error": "An error occurred while processing the chat message.", "session_id": session_id}
+        return {"error": "An error occurred while processing the chat message.", "session_id": session_id,"agent": str(agent)}
 
 
     
