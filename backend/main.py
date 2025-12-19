@@ -10,6 +10,10 @@ from services.session_manager import SessionManager
 
 from pathlib import Path
 import shutil
+from pydantic import BaseModel
+from typing import Optional, Dict
+
+
 
 # ============================================================
 # 🚀 APP INITIALIZATION
@@ -65,15 +69,19 @@ app.mount("/sanctions", StaticFiles(directory=SANCTION_DIR), name="sanctions")
 # ============================================================
 # 💬 CHAT API
 # ============================================================
+class ChatRequest(BaseModel):
+    message: str
+    customer: Optional[Dict] = None
+    session_id: Optional[str] = None
 
 @app.post("/chat")
-async def handle_chat(request: Request):
-    data = await request.json()
+async def handle_chat(payload: ChatRequest):
+    # data = await request.json()
 
-    msg = data.get("message", "")
-    customer = data.get("customer")
-    session_id = data.get("session_id")
-
+    msg = payload.message
+    customer = payload.customer
+    session_id = payload.session_id
+    
     if not session_id:
         session_id = session_manager.create_session()
 
