@@ -8,7 +8,7 @@ export const API_BASE =
 function getSessionId() {
   return typeof window !== "undefined"
     ? localStorage.getItem("session_id")
-    : null;
+    : " ";
 }
 
 function saveSessionId(sessionId) {
