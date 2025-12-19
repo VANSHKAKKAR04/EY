@@ -81,12 +81,18 @@ async def handle_chat(payload: ChatRequest):
     msg = payload.message
     customer = payload.customer
     session_id = payload.session_id
+
+    print(f"Received message: {msg} {customer} {session_id}")
     
     if not session_id:
         session_id = session_manager.create_session()
 
+    print(f"Using session ID: {session_id}")
+
     agent = session_manager.get_agent(session_id)
+    print(f"Agent retrieved for session ID: {agent}")
     response = agent.handle_message(msg, user_profile=customer)
+    print(f"Response from agent: {response}")
 
     return {
         "session_id": session_id,
