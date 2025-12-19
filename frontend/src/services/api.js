@@ -33,7 +33,7 @@ export async function sendMessage(message) {
     body: JSON.stringify({
       message,
       customer,
-      session_id,
+      // session_id,
     }),
   });
 

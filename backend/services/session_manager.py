@@ -6,10 +6,12 @@ class SessionManager:
     def __init__(self):
         self.sessions: Dict[str, MasterAgent] = {}
 
-    def get_agent(self, session_id: str) -> MasterAgent:
-        if session_id not in self.sessions:
-            self.sessions[session_id] = MasterAgent()
-        return self.sessions[session_id]
+    def get_agent(self) -> MasterAgent:
+        # if session_id not in self.sessions:
+        #     self.sessions[session_id] = 
+        
+        return MasterAgent()
+        # return self.sessions[session_id]
 
     def create_session(self) -> str:
         session_id = str(uuid.uuid4())
