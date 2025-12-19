@@ -68,7 +68,8 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             <a
-              href="/"
+              // href="/"
+              onClick={() => navigate("/")}
               className="text-slate-600 hover:text-blue-600 transition-colors font-medium"
             >
               Home
@@ -180,7 +181,8 @@ export default function Navbar() {
                   }}
                 >
                   <a
-                    href="/blog"
+                    // href="/blog"
+                    onClick={() => navigate("/blog")}
                     className="block px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100"
                   >
                     <div className="font-semibold text-slate-800">Blog</div>
@@ -189,7 +191,8 @@ export default function Navbar() {
                     </div>
                   </a>
                   <a
-                    href="/faqs"
+                    // href="/faqs"
+                    onClick={() => navigate("/faqs")}
                     className="block px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100"
                   >
                     <div className="font-semibold text-slate-800">FAQs</div>
@@ -209,7 +212,8 @@ export default function Navbar() {
                     </div>
                   </a> */}
                   <a
-                    href="/customer-stories"
+                    // href="/customer-stories"
+                    onClick={() => navigate("/customer-stories")}
                     className="block px-4 py-3 hover:bg-blue-50 transition-colors"
                   >
                     <div className="font-semibold text-slate-800">
@@ -224,14 +228,16 @@ export default function Navbar() {
             </div>
 
             <a
-              href="/support"
+              // href="/support"
+              onClick={() => navigate("/support")}
               className="text-slate-600 hover:text-blue-600 transition-colors font-medium"
             >
               Support
             </a>
 
             <a
-              href="/about"
+              // href="/about"
+              onClick={() => navigate("/about")}
               className="text-slate-600 hover:text-blue-600 transition-colors font-medium"
             >
               About Us
@@ -353,7 +359,8 @@ export default function Navbar() {
         >
           <div className="pt-4 pb-4 border-t border-slate-200 space-y-2">
             <a
-              href="/"
+              // href="/"
+              onClick={() => navigate("/")}
               className="block px-4 py-3 text-slate-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               Home
@@ -408,13 +415,15 @@ export default function Navbar() {
               </div>
               <div className="pl-4 space-y-2">
                 <a
-                  href="/blog"
+                  // href="/blog"
+                  onClick={() => navigate("/blog")}
                   className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                 >
                   Blog
                 </a>
                 <a
-                  href="/faqs"
+                  // href="/faqs"
+                  onClick={() => navigate("/faqs")}
                   className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                 >
                   FAQs
@@ -426,7 +435,8 @@ export default function Navbar() {
                   How It Works
                 </a> */}
                 <a
-                  href="/customer-stories"
+                  // href="/customer-stories"
+                  onClick={() => navigate("/customer-stories")}
                   className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                 >
                   Customer Stories
@@ -435,14 +445,16 @@ export default function Navbar() {
             </div>
 
             <a
-              href="/support"
+              // href="/support"
+              onClick={() => navigate("/support")}
               className="block px-4 py-3 text-slate-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               Support
             </a>
 
             <a
-              href="/about"
+              // href="/about"
+              onClick={() => navigate("/about")}
               className="block px-4 py-3 text-slate-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               About Us
@@ -459,25 +471,29 @@ export default function Navbar() {
                 {isLoggedIn ? (
                   <>
                     <a
-                      href="/dashboard"
+                      // href="/dashboard"
+                      onClick={() => navigate("/dashboard")}
                       className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                     >
                       Dashboard
                     </a>
                     <a
-                      href="/my-loans"
+                      // href="/my-loans"
+                      onClick={() => navigate("/my-loans")}
                       className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                     >
                       My Loans
                     </a>
                     <a
-                      href="/profile"
+                      // href="/profile"
+                      onClick={() => navigate("/profile")}
                       className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                     >
                       Profile Settings
                     </a>
                     <a
-                      href="/documents"
+                      // href="/documents"
+                      onClick={() => navigate("/documents")}
                       className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                     >
                       Documents
@@ -492,13 +508,15 @@ export default function Navbar() {
                 ) : (
                   <>
                     <a
-                      href="/login"
+                      // href="/login"
+                      onClick={() => navigate("/login")}
                       className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                     >
                       Login
                     </a>
                     <a
-                      href="/signup"
+                      // href="/signup"
+                      onClick={() => navigate("/signup")}
                       className="block py-2 text-slate-600 hover:text-blue-600 transition-colors"
                     >
                       Sign Up
