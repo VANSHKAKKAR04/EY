@@ -89,19 +89,19 @@ async def handle_chat(payload: ChatRequest):
 
         print(f"Using session ID: {session_id}")
 
-        # agent = session_manager.get_agent(session_id)
-        # print(f"Agent retrieved for session ID: {agent}")
-        # response = agent.handle_message(msg, user_profile=customer)
-        # print(f"Response from agent: {response}")
+        agent = session_manager.get_agent(session_id)
+        print(f"Agent retrieved for session ID: {agent}")
+        response = agent.handle_message(msg, user_profile=customer)
+        print(f"Response from agent: {response}")
 
         return {
             "session_id": session_id,
-            # "message": response.get("response"),
-            # "stage": response.get("stage"),
-            # "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
-            # "awaitingPan": response.get("awaitingPan", False),
-            # "awaitingAadhaar": response.get("awaitingAadhaar", False),
-            # "file": response.get("file"),
+            "message": response.get("response"),
+            "stage": response.get("stage"),
+            "awaitingSalarySlip": response.get("awaitingSalarySlip", False),
+            "awaitingPan": response.get("awaitingPan", False),
+            "awaitingAadhaar": response.get("awaitingAadhaar", False),
+            "file": response.get("file"),
         }
     except:
         return {"error": "An error occurred while processing the chat message.", "session_id": session_id,"agent": str(agent)}
