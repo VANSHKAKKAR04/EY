@@ -284,7 +284,8 @@ export default function Navbar() {
                         My Loans
                       </a> */}
                       <a
-                        href="/profile"
+                        // href="/profile"
+                        onClick={() => navigate("/profile")}
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700 border-b border-slate-100"
                       >
                         Profile Settings
@@ -326,7 +327,8 @@ export default function Navbar() {
             <button
               onClick={() => {
                 if (isLoggedIn) {
-                  window.location.href = "/chat";
+                  // window.location.href = "/chat";
+                  navigate("/chat");
                 } else {
                   navigate("/login");
                 }
@@ -529,7 +531,8 @@ export default function Navbar() {
             <button
               onClick={() => {
                 if (isLoggedIn) {
-                  window.location.href = "/chat";
+                  // window.location.href = "/chat";
+                  navigate("/chat");
                 } else {
                   navigate("/login");
                 }
