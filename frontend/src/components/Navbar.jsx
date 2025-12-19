@@ -58,7 +58,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 py-4 relative">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-3 group">
+          <a
+            // href="/"
+            onClick={() => navigate("/")}
+            className="flex items-center gap-3 group"
+          >
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <BadgeIndianRupee className="w-6 h-6 text-white" />
             </div>
@@ -306,13 +310,15 @@ export default function Navbar() {
                   ) : (
                     <>
                       <a
-                        href="/login"
+                        // href="/login"
+                        onClick={() => navigate("/login")}
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700 border-b border-slate-100"
                       >
                         Login
                       </a>
                       <a
-                        href="/signup"
+                        // href="/signup"
+                        onClick={() => navigate("/signup")}
                         className="block px-4 py-3 hover:bg-blue-50 transition-colors text-slate-700"
                       >
                         Sign Up
